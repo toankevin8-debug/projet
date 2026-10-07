@@ -366,7 +366,14 @@ export async function dashboard(userId) {
      WHERE o.user_id = $1 AND o.status <> 'brouillon' ORDER BY o.issue_date DESC, o.number DESC LIMIT 6`,
     [userId],
   );
-  return { figures, forecast, months, todo, recent };
+  const steps = await one(
+    `SELECT (SELECT count(*) FROM clients WHERE user_id = $1) AS clients,
+            count(*) FILTER (WHERE status <> 'brouillon') AS emitted,
+            count(*) FILTER (WHERE status <> 'brouillon' AND NOT to_certify) AS certified
+     FROM invoice_overview WHERE user_id = $1`,
+    [userId],
+  );
+  return { figures, forecast, months, todo, recent, steps };
 }
 
 export function navCounts(userId) {

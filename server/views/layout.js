@@ -11,7 +11,8 @@ function document({ title, description, body, bodyClass = '' }) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${title}</title>
   ${description ? html`<meta name="description" content="${description}">` : ''}
-  <meta name="theme-color" content="#f4efe5">
+  <meta name="theme-color" content="#123832">
+  <script>document.documentElement.classList.add('js')</script>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,7 +25,7 @@ ${body}
 </html>`;
 }
 
-export const wordmark = (href = '/') => html`<a class="wordmark" href="${href}">Free<b>Fact</b></a>`;
+export const wordmark = (href = '/') => html`<a class="wordmark" href="${href}"><img src="/logo.svg" alt="" width="32" height="32"><span>Free<b>Fact</b></span></a>`;
 
 export function publicPage({ title, description, user, content, nav = true, current }) {
   return document({
@@ -64,6 +65,7 @@ export function appPage({ title, user, active, content, counts = {}, banner }) {
   return document({
     title: `${title} · FreeFact`,
     body: html`
+<a class="skip-link" href="#contenu">Aller au contenu</a>
 <div class="app">
   <aside class="app-side">
     ${wordmark('/app')}
@@ -83,9 +85,10 @@ export function appPage({ title, user, active, content, counts = {}, banner }) {
   </aside>
   <div>
     ${banner ? html`<div class="banner">${banner}</div>` : ''}
-    <main class="app-main">${content}</main>
+    <main class="app-main" id="contenu">${content}</main>
   </div>
 </div>
+<script src="/js/words.js" defer></script>
 <script src="/js/app.js" defer></script>`,
   });
 }

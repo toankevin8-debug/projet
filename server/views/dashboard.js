@@ -3,7 +3,7 @@ import { appPage } from './layout.js';
 
 const SERIES = [
   { key: 'billed', label: 'Facturé', color: '#2f5f9a' },
-  { key: 'cashed', label: 'Encaissé', color: '#c0531f' },
+  { key: 'cashed', label: 'Encaissé', color: '#b07a12' },
 ];
 
 const monthLabel = (m) =>
@@ -71,8 +71,24 @@ function todoReason(t) {
   return `Échéance le ${date(t.due_date)}.`;
 }
 
+// Premiers pas : visible tant que le cycle complet n'a pas été parcouru une fois.
+function onboarding(steps) {
+  const items = [
+    ['Identité légale', 'NCC, régime, centre des impôts', true, '/app/parametres', 'Modifier'],
+    ['Un premier client', 'Avec son NCC si c’est une entreprise', steps.clients > 0, '/app/clients/nouveau', 'Ajouter'],
+    ['Une facture émise', 'Numérotée et figée', steps.emitted > 0, '/app/factures/nouvelle', 'Créer'],
+    ['Certifiée FNE', 'Numéro fiscal reporté, envoi débloqué', steps.certified > 0, '/app/factures?filtre=a_certifier', 'Voir'],
+  ];
+  if (items.every((i) => i[2])) return '';
+  const done = items.filter((i) => i[2]).length;
+  return html`<section class="onboard" aria-labelledby="ob-title">
+    <div><p class="eyebrow">Premiers pas · ${done} sur ${items.length}</p><h2 id="ob-title">Votre première facture certifiée</h2></div>
+    <ol>${items.map(([t, d, ok, href, cta]) => html`<li class="${ok ? 'done' : ''}"><b>${t}</b><span class="muted small">${d}</span>${ok ? '' : html`<br><a href="${href}">${cta}</a>`}</li>`)}</ol>
+  </section>`;
+}
+
 export function dashboardPage({ user, data, counts, banner, express }) {
-  const { figures: f, forecast, months, todo, recent } = data;
+  const { figures: f, forecast, months, todo, recent, steps } = data;
   const first = user.fullname.split(' ')[0];
   return appPage({
     title: 'Tableau de bord',
@@ -87,6 +103,7 @@ export function dashboardPage({ user, data, counts, banner, express }) {
   <div class="actions"><a class="btn btn--accent" href="/app/factures/nouvelle">Nouvelle facture</a></div>
 </div>
 
+${onboarding(steps)}
 <div class="figures">
   ${figure('Facturé ce mois', f.billed_month)}
   ${figure('Encaissé ce mois', f.cashed_month)}

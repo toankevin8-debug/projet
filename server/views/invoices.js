@@ -325,6 +325,7 @@ export function publicInvoicePage({ inv }) {
   ${invoiceSheet(toSheet(inv))}
   <p class="small muted no-print" style="margin-top:18px;display:flex;gap:8px;align-items:center">Facture éditée avec ${wordmark()}</p>
 </main>
+<script src="/js/words.js" defer></script>
 <script src="/js/app.js" defer></script>`,
   });
 }

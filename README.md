@@ -55,6 +55,8 @@ DATABASE_URL=postgres://…/base_vide npm test      # parcours complet par HTTP
 
 - **La base est la source de vérité des règles légales.** Les fonctions `emit_invoice`, `record_fne_certification`, `mark_invoice_sent`, `create_credit_note` sont les seules portes de changement d’état ; des déclencheurs refusent toute modification d’une facture émise, même en SQL direct.
 - **L’IA prépare, elle n’émet jamais.** La Facture express transforme une phrase en brouillon ; un prix absent reste à 0. Seuls la phrase et les noms des clients partent vers le modèle (ni NCC, ni téléphone, ni email). Le quota mensuel du plan est vérifié en base (`record_ai_usage`).
-- **Design.** Papier, encre et filets : une seule couleur d’accent (latérite), titres en Newsreader, interface et chiffres en IBM Plex, étiquettes d’état en petites capitales. Les écrans montrent de vrais documents plutôt que des illustrations.
+- **Design.** Identité tirée du logo (`public/logo.svg`) : vert lagune `#123832` pour les actions et les bandeaux, point d’or `#D4941F` en accent (or foncé `#8A5A06` pour le texte sur papier, contraste 5,2:1). Papier chaud, filets de registre, titres en Newsreader, interface et chiffres en IBM Plex. Les écrans montrent de vrais documents plutôt que des illustrations.
+- **Landing page.** Formulaire à un champ, preuves factuelles (aucun témoignage inventé), démonstration du contrôle de conformité sans compte, aperçu du message WhatsApp reçu par le client, tarifs, barre d’action collante sur mobile. Animations d’apparition désactivées sous `prefers-reduced-motion`.
+- **Accessibilité.** Lien d’évitement, focus visible, cibles tactiles de 44 px, contrastes vérifiés, boutons verrouillés pendant l’envoi (pas de double émission).
 
 FreeFact est un outil de gestion : il ne remplace ni la DGI ni l’expert-comptable. Le portail [fne.dgi.gouv.ci](https://fne.dgi.gouv.ci) fait foi.

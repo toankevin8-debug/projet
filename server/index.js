@@ -34,7 +34,7 @@ export function createApp() {
 
   app.get('/inscription', (req, res) => {
     if (req.user) return res.redirect('/app');
-    return res.send(String(signupPage({ plan: req.query.plan })));
+    return res.send(String(signupPage({ plan: req.query.plan, values: { email: text(req.query.email) || '' } })));
   });
 
   app.post('/inscription', async (req, res) => {
