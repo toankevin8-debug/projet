@@ -57,6 +57,7 @@ body {
 }
 
 img, svg { display: block; max-width: 100%; }
+[hidden] { display: none !important; }
 
 a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 a:hover { color: var(--accent-ink); }
@@ -667,3 +668,4 @@ form.plan { margin: 0; }
 .settings-more h2 { font-size: 26px; margin-bottom: 12px; }
 .logo-row { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
 .draft-restore { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.ledger th + th, .ledger td + td { padding-left: 16px; }

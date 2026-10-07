@@ -69,7 +69,7 @@ ${c.summary ? html`<div class="panel-title"><h2>Coordonnées</h2></div>` : ''}
   <label class="field"><span>Notes internes</span><textarea name="notes" rows="2">${c.notes || ''}</textarea></label>
   <button class="btn" type="submit">${c.id ? 'Enregistrer' : 'Créer le client'}</button>
 </form>
-${c.id
+${c.id && !(c.invoices || []).some((i) => i.status !== 'brouillon')
   ? html`<form method="post" action="/app/clients/${c.id}/supprimer" style="margin-top:28px" data-confirm="Supprimer ce client ?">
       <button class="link-btn link-btn--danger small">Supprimer ce client</button>
       <span class="small muted"> — impossible dès qu’une facture lui a été émise.</span></form>`

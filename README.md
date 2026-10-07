@@ -13,17 +13,32 @@ Le cahier des charges MVP V2 est dans [`docs/cahier-des-charges-mvp-v2.md`](docs
 | `db/tests/` | Tests SQL de chaque règle (`npm run test:db`). |
 | `server/` | Application Node.js / Express, pages rendues côté serveur (légères, utilisables sur un réseau mobile irrégulier). |
 | `public/` | Feuille de style unique et un petit script de confort (totaux en direct, dictée). Tout fonctionne sans JavaScript. |
-| `test/` | Test de bout en bout du parcours d’une facture par HTTP (`npm test`). |
+| `test/` | Tests de bout en bout par HTTP (`npm test`) : parcours d’une facture, comptes, abonnement, PDF, devis, notifications, IA contre un faux serveur d’API. |
 
-### Modules livrés
+## Couverture du cahier des charges
 
-Landing page avec inscription intégrée · inscription / connexion · onboarding de l’identité légale (NCC, régime, centre des impôts, TVA proposée selon le régime) · tableau de bord (6 indicateurs, facturé/encaissé sur 6 mois, prévisions à 7 et 30 jours, liste « À traiter ») · clients · devis (conversion en facture) · factures et avoirs (contrôle de conformité en direct, émission, certification FNE guidée, envoi WhatsApp/email, paiements partiels, relances, duplication, impression) · paiements · conformité · paramètres et sauvegarde JSON · **Facture express** (IA, optionnelle).
+| Module (section 5) | État |
+|---|---|
+| Landing page | Livrée : preuves factuelles, démonstration sans compte, aperçu WhatsApp, tarifs, FAQ, inscription intégrée. La vidéo « Voir une démo » reste à tourner. |
+| Inscription | Email + mot de passe avec vérification, mot de passe oublié, connexion Google (si `GOOGLE_CLIENT_ID`), limite de tentatives. |
+| Onboarding | Identité légale, TVA proposée selon le régime, liste « Premiers pas ». |
+| Tableau de bord | 6 indicateurs, facturé/encaissé sur 6 mois, prévisions 7/30 jours (commentées par l’IA à la demande), « À traiter », Facture express. |
+| Clients | Particulier ou entreprise, fiche avec historique, délai moyen de paiement, suppression refusée si facture émise. |
+| Devis | Lignes, envoi WhatsApp avec lien client `/d/:id`, statuts, conversion en facture. |
+| Factures | Cycle complet, avoirs, duplication, PDF natif (filigrane tant que non certifiée), envoi WhatsApp et email avec PDF joint, brouillons gardés sur l’appareil. |
+| Paiements | Partiels ou totaux, tous moyens ; relances modèles ou rédigées par l’IA, relances en lot (Business). |
+| Notifications | Dans l’application et récapitulatif quotidien par email (désactivable). |
+| Assistant IA | Chat sur les données du compte (sans NCC, téléphone ni email). |
+| Conformité | Score du dossier légal, guide FNE. |
+| Abonnement | Quotas, usage du mois, changement de plan. **Paiement simulé** tant que l’agrégateur Mobile Money n’est pas choisi. |
+| Paramètres | Identité, TVA, préfixes, logo (Pro), notifications, mot de passe, sauvegarde JSON. Statistiques et exports CSV en Business. |
 
-### Pas encore branché
+**Dépend d’un tiers, à brancher le moment venu :**
 
-- Vérification d’email et connexion Google (le schéma les prévoit : `email_verified_at`, `google_id`).
-- Certification FNE **par API** : exige l’autorisation de la DGI. En attendant, la certification est guidée (saisie du numéro fiscal).
-- Paiement des abonnements par Mobile Money (agrégateur), PDF natif côté serveur (l’impression du navigateur produit le PDF), envoi automatique d’emails.
+- **Certification FNE par API** : exige l’autorisation de la DGI ; le contrat d’interface n’est connu qu’avec l’agrément. Tout est prêt autour d’un seul point d’intégration (`server/fne.js`) ; `FNE_MODE=simulation` permet de tester le parcours (refusé en production).
+- **Paiement des abonnements** : agrégateur Mobile Money à choisir ; les changements de plan sont aujourd’hui tracés comme simulés (`billing_events`).
+- **Emails** : il suffit d’un compte SMTP (`SMTP_URL`). Sans lui, chaque email est gardé dans la table `outbox`.
+- **Pages légales** : CGU, confidentialité et mentions légales sont en version de travail, à faire valider par un juriste ivoirien.
 
 ## Lancer en local
 
@@ -34,21 +49,33 @@ DATABASE_URL=postgres://localhost/freefact npm start      # crée le schéma au 
 # → http://localhost:3000
 ```
 
-Variables d’environnement :
+Ou avec Docker (application + PostgreSQL) :
+
+```bash
+cp .env.example .env    # facultatif : SMTP, Google, IA, FNE
+docker compose up --build
+```
+
+Toutes les variables sont décrites dans [`.env.example`](.env.example). `GET /sante` répond `{"ok":true}` quand la base est joignable.
+
+Variables d’environnement principales :
 
 | Variable | Rôle |
 |---|---|
-| `DATABASE_URL` | Connexion PostgreSQL. |
-| `PORT` | Port HTTP (3000 par défaut). |
-| `NODE_ENV=production` | Cookies de session `Secure`. |
-| `ANTHROPIC_API_KEY` | Active la Facture express. Sans clé, le bloc n’apparaît pas. |
-| `FREEFACT_AI_MODEL` | Modèle utilisé par la Facture express (`claude-opus-5-5` par défaut). |
+| `DATABASE_URL` | Connexion PostgreSQL (seule obligatoire). |
+| `PUBLIC_URL` | Adresse publique, pour les liens envoyés par email et WhatsApp. |
+| `NODE_ENV=production` | Cookies `Secure`, mode simulation FNE refusé. |
+| `SMTP_URL`, `MAIL_FROM` | Envoi réel des emails. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Connexion Google. |
+| `ANTHROPIC_API_KEY`, `FREEFACT_AI_MODEL` | Fonctions IA (`claude-opus-5-5` par défaut). Sans clé, elles n’apparaissent pas. |
+| `FNE_MODE`, `FNE_API_URL`, `FNE_API_TOKEN` | Certification FNE : `manuel`, `api` ou `simulation`. |
+| `DISABLE_JOBS=1` | Coupe le récapitulatif quotidien par email. |
 
 ## Tests
 
 ```bash
 PGHOST=… PGPORT=… PGUSER=… npm run test:db       # règles de la base, sur une base jetable
-DATABASE_URL=postgres://…/base_vide npm test      # parcours complet par HTTP
+DATABASE_URL=postgres://…/base_vide npm test      # parcours complets par HTTP (9 tests)
 ```
 
 ## Choix de conception

@@ -33,6 +33,11 @@ export function createApp() {
 
   // --- Pages publiques ---------------------------------------------------------------
 
+  app.get('/sante', async (_req, res) => {
+    await one('SELECT 1');
+    res.json({ ok: true });
+  });
+
   app.get('/', (req, res) => res.send(String(landingPage({ user: req.user }))));
 
   app.use(accountRouter);

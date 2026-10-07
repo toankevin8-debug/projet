@@ -1,0 +1,30 @@
+# Démarrage local complet : docker compose up --build  →  http://localhost:3000
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: freefact
+      POSTGRES_USER: freefact
+      POSTGRES_PASSWORD: freefact
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U freefact"]
+      interval: 5s
+      retries: 10
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgres://freefact:freefact@db:5432/freefact
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:3000}
+      NODE_ENV: ${NODE_ENV:-development}
+volumes:
+  pgdata:

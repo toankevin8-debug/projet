@@ -103,6 +103,9 @@ export function subscriptionPage({ user, usage, history, navCounts, message, err
 
 // --- Statistiques avancées ------------------------------------------------------------------------------
 
+// Retard moyen : négatif = payé avant l'échéance, affiché « à l'heure ».
+const delay = (d) => (d == null ? '—' : Number(d) <= 0 ? 'à l’heure' : `+${Math.round(d)} j`);
+
 const monthLabel = (m) => new Intl.DateTimeFormat('fr-FR', { month: 'short', year: '2-digit', timeZone: 'UTC' }).format(new Date(`${m}T00:00:00Z`));
 
 export function statsPage({ user, stats, navCounts, exports }) {
@@ -118,7 +121,7 @@ export function statsPage({ user, stats, navCounts, exports }) {
       <div class="actions">${Object.entries(exports).map(([k, e]) => html`<a class="btn btn--ghost btn--small" href="/app/exports/${k}.csv">${e.label} (CSV)</a>`)}</div></div>
     <div class="figures">
       <div class="figure"><span class="eyebrow">Facture moyenne</span><div class="value">${amount(kpi.avg_invoice)}<small>FCFA</small></div></div>
-      <div class="figure"><span class="eyebrow">Retard moyen de paiement</span><div class="value">${kpi.avg_delay == null ? '—' : Math.round(kpi.avg_delay)}<small>jours</small></div><div class="sub">Après l’échéance, factures soldées</div></div>
+      <div class="figure"><span class="eyebrow">Retard moyen de paiement</span><div class="value">${kpi.avg_delay == null ? '—' : Math.max(0, Math.round(kpi.avg_delay))}<small>jours</small></div><div class="sub">Après l’échéance, factures soldées</div></div>
       <div class="figure"><span class="eyebrow">Délai de recouvrement (DSO)</span><div class="value">${kpi.dso ?? '—'}<small>jours</small></div><div class="sub">Encours rapporté au facturé sur 90 jours</div></div>
     </div>
     <div class="panel-title"><h2>Par client</h2><span class="muted small">TTC, avoirs déduits</span></div>
@@ -126,7 +129,7 @@ export function statsPage({ user, stats, navCounts, exports }) {
     <tbody>${byClient.map((c) => html`<tr><td><a class="row-link" href="/app/clients/${c.id}">${c.name}</a></td><td class="r num">${c.invoices}</td>
       <td class="r num">${amount(c.billed)}</td><td style="min-width:120px"><div class="bar" style="margin:6px 0"><i style="width:${Math.round((c.billed / totalBilled) * 100)}%"></i></div><span class="small muted">${Math.round((c.billed / totalBilled) * 100)} %</span></td>
       <td class="r num">${amount(c.paid)}</td><td class="r num">${c.remaining ? amount(c.remaining) : '—'}</td>
-      <td class="r num">${c.avg_delay_days == null ? '—' : `${Math.round(c.avg_delay_days)} j`}</td></tr>`)}</tbody></table></div>
+      <td class="r num">${delay(c.avg_delay_days)}</td></tr>`)}</tbody></table></div>
 
     <div class="cols" style="margin-top:36px">
       <section>
@@ -230,7 +233,7 @@ export function clientHistory(c) {
       <div class="figure"><span class="eyebrow">Facturé</span><div class="value">${amount(s.billed)}<small>FCFA</small></div></div>
       <div class="figure"><span class="eyebrow">Encaissé</span><div class="value">${amount(s.paid)}<small>FCFA</small></div></div>
       <div class="figure ${s.remaining > 0 ? 'figure--warn' : ''}"><span class="eyebrow">Reste dû</span><div class="value">${amount(s.remaining)}<small>FCFA</small></div></div>
-      <div class="figure"><span class="eyebrow">Retard moyen</span><div class="value">${s.avg_delay_days == null ? '—' : Math.round(s.avg_delay_days)}<small>jours</small></div></div>
+      <div class="figure"><span class="eyebrow">Retard moyen</span><div class="value">${s.avg_delay_days == null ? '—' : Math.max(0, Math.round(s.avg_delay_days))}<small>jours</small></div>${s.avg_delay_days != null && s.avg_delay_days <= 0 ? html`<div class="sub">Paie à l’heure</div>` : ''}</div>
     </div>
     <div class="cols" style="margin-bottom:36px">
       <section><div class="panel-title"><h2>Factures</h2><a class="small" href="/app/factures/nouvelle?client=${c.id}">Nouvelle facture</a></div>
