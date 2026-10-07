@@ -129,3 +129,106 @@ export function registerAiRoutes(router) {
     }
   });
 }
+
+// =====================================================================================
+// Relances, assistant financier, commentaire des prévisions
+// =====================================================================================
+
+// Vérifie le quota avant l'appel, l'enregistre après succès (record_ai_usage revérifie en base).
+export class QuotaError extends Error {}
+export async function withQuota(userId, action, fn) {
+  const usage = await data.aiUsageThisMonth(userId);
+  if (usage.quota != null && usage.used >= usage.quota) {
+    throw new QuotaError(`Quota IA du mois atteint (${usage.quota} actions). Passez au plan supérieur depuis la page Abonnement.`);
+  }
+  const result = await fn();
+  await one('SELECT record_ai_usage($1, $2)', [userId, action]);
+  return result;
+}
+
+async function askText({ system, messages, maxTokens = 2000, effort = 'low' }) {
+  const response = await anthropic().beta.messages.create({
+    model: MODEL,
+    max_tokens: maxTokens,
+    betas: ['server-side-fallback-2026-07-01'],
+    fallbacks: 'default',
+    output_config: { effort },
+    system,
+    messages,
+  });
+  if (response.stop_reason === 'refusal') return null;
+  return response.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim() || null;
+}
+
+async function askJson(schema, { system, content, maxTokens = 4000 }) {
+  const response = await anthropic().beta.messages.parse({
+    model: MODEL,
+    max_tokens: maxTokens,
+    betas: ['server-side-fallback-2026-07-01'],
+    fallbacks: 'default',
+    output_config: { effort: 'low', format: betaZodOutputFormat(schema) },
+    system,
+    messages: [{ role: 'user', content }],
+  });
+  if (response.stop_reason === 'refusal') return null;
+  return response.parsed_output ?? null;
+}
+
+const REMINDER_SYSTEM = `Tu rédiges des relances de paiement pour un freelance ou une petite entreprise en Côte d'Ivoire, en français.
+Ton demandé : amical (simple rappel, on suppose un oubli), cordial (rappel poli, on demande une date de paiement), ferme (rappel net, on attend le règlement rapidement), dernier_rappel (dernier message avant d'autres démarches, sans les détailler).
+Règles impératives :
+- Aucune menace, aucune loi ni article cité, aucune pénalité chiffrée, aucun délai inventé.
+- Reprends exactement le numéro de facture, le montant restant et la date d'échéance fournis ; n'invente aucun autre chiffre.
+- Inclus le lien de la facture tel quel.
+- Pour WhatsApp : 4 à 6 phrases courtes, pas d'objet. Pour un email : même longueur, sans objet ni signature de logiciel.
+- Signe avec le nom de l'entreprise fourni.`;
+
+const reminderFacts = (r) =>
+  `Facture ${r.number} · client : ${r.client} · reste à payer : ${r.remaining} FCFA · échéance : ${r.due} (${r.daysLate} jour(s) de retard) · relances déjà envoyées : ${r.previous} · entreprise : ${r.seller} · lien : ${r.url} · canal : ${r.channel} · ton : ${r.tone}`;
+
+export async function writeReminder(r) {
+  const out = await askJson(z.object({ message: z.string() }), { system: REMINDER_SYSTEM, content: reminderFacts(r) });
+  return out?.message ?? null;
+}
+
+export async function writeReminders(list) {
+  const out = await askJson(
+    z.object({ relances: z.array(z.object({ numero: z.string(), message: z.string() })) }),
+    {
+      system: `${REMINDER_SYSTEM}\nTu reçois plusieurs factures : rédige un message par facture, dans le ton indiqué pour chacune.`,
+      content: list.map(reminderFacts).join('\n'),
+      maxTokens: 12000,
+    },
+  );
+  return out?.relances ?? null;
+}
+
+export async function commentForecast(facts) {
+  return askText({
+    system: `Tu commentes les prévisions de trésorerie d'un freelance ivoirien, en français, en 5 lignes au plus.
+Tu ne fais aucun calcul et tu n'inventes aucun chiffre : tu reprends seulement ceux fournis.
+Tu signales ce qui mérite une action (retards importants, client habituellement lent, concentration sur un client) et tu restes concret.`,
+    messages: [{ role: 'user', content: JSON.stringify(facts) }],
+    maxTokens: 1200,
+  });
+}
+
+const ASSISTANT_SYSTEM = `Tu es l'assistant financier de FreeFact, un logiciel de facturation pour freelances et petites entreprises en Côte d'Ivoire.
+Tu réponds en français, brièvement, à partir des seules données du compte fournies en JSON (factures émises, paiements, relances, délais de paiement par client).
+Règles :
+- Si l'information n'est pas dans les données, dis-le ; ne l'invente pas. Les montants sont en FCFA.
+- Les factures « certifiee: false » attendent leur numéro fiscal FNE et ne peuvent pas être envoyées.
+- Pour toute question fiscale (TVA, régime, déclarations, obligations FNE), donne au plus une indication générale et renvoie vers la DGI (fne.dgi.gouv.ci) ou un expert-comptable.
+- Pas de mise en forme Markdown lourde : phrases courtes, listes simples si besoin.`;
+
+export async function answerQuestion(question, history, context) {
+  return askText({
+    system: [
+      { type: 'text', text: ASSISTANT_SYSTEM },
+      { type: 'text', text: `Données du compte :\n${JSON.stringify(context)}`, cache_control: { type: 'ephemeral' } },
+    ],
+    messages: [...history.map((m) => ({ role: m.role, content: m.content })), { role: 'user', content: question }],
+    maxTokens: 2000,
+    effort: 'medium',
+  });
+}

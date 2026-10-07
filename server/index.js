@@ -2,15 +2,18 @@ import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { one, userMessage } from './db.js';
 import { migrate } from './migrate.js';
-import { endSession, hashPassword, loadUser, requireUser, sameOrigin, startSession, verifyPassword } from './auth.js';
-import { UUID, text } from './forms.js';
+import { loadUser, requireUser, sameOrigin } from './auth.js';
+import { router as accountRouter } from './account-routes.js';
+import { LEGAL_PAGES } from './views/legal.js';
+import { sendInvoicePdf } from './pdf.js';
+import { startJobs } from './jobs.js';
+import { UUID } from './forms.js';
 import { router as appRouter } from './app-routes.js';
 import { landingPage } from './views/landing.js';
-import { signupPage, loginPage } from './views/auth.js';
-import { publicInvoicePage } from './views/invoices.js';
+import { publicInvoicePage, publicQuotePage } from './views/invoices.js';
 import { plainPage } from './views/layout.js';
 import { html } from './html.js';
-import { getPublicInvoice } from './data.js';
+import { getPublicInvoice, getPublicQuote } from './data.js';
 
 export function createApp() {
   const app = express();
@@ -32,59 +35,19 @@ export function createApp() {
 
   app.get('/', (req, res) => res.send(String(landingPage({ user: req.user }))));
 
-  app.get('/inscription', (req, res) => {
-    if (req.user) return res.redirect('/app');
-    return res.send(String(signupPage({ plan: req.query.plan, values: { email: text(req.query.email) || '' } })));
-  });
+  app.use(accountRouter);
 
-  app.post('/inscription', async (req, res) => {
-    const values = {
-      fullname: text(req.body.fullname),
-      email: text(req.body.email)?.toLowerCase(),
-      phone: text(req.body.phone),
-      terms: req.body.terms === '1',
-    };
-    const password = typeof req.body.password === 'string' ? req.body.password : '';
-    const fail = (error) => res.status(422).send(String(signupPage({ error, values })));
+  for (const [path, page] of Object.entries(LEGAL_PAGES)) app.get(path, (req, res) => res.send(String(page({ user: req.user }))));
 
-    if (!values.fullname) return fail('Indiquez votre nom.');
-    if (!values.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) return fail('Adresse email invalide.');
-    if (password.length < 8) return fail('Le mot de passe doit faire au moins 8 caractères.');
-    if (!values.terms) return fail('Cochez la case pour confirmer que vous avez compris le rôle de FreeFact.');
-
-    try {
-      const user = await one(
-        `INSERT INTO users (fullname, email, phone, password_hash) VALUES ($1, $2, $3, $4) RETURNING id`,
-        [values.fullname, values.email, values.phone, await hashPassword(password)],
-      );
-      await startSession(res, user.id);
-      return res.redirect('/app/parametres');
-    } catch (err) {
-      if (err.code === '23505') return fail('Un compte existe déjà avec cet email. Connectez-vous.');
-      throw err;
-    }
-  });
-
-  app.get('/connexion', (req, res) => {
-    if (req.user) return res.redirect('/app');
-    return res.send(String(loginPage({ next: req.query.suite })));
-  });
-
-  app.post('/connexion', async (req, res) => {
-    const email = text(req.body.email)?.toLowerCase() || '';
-    const user = await one('SELECT id, password_hash FROM users WHERE lower(email) = $1', [email]);
-    const ok = user && (await verifyPassword(String(req.body.password || ''), user.password_hash));
-    if (!ok) {
-      return res.status(401).send(String(loginPage({ error: 'Email ou mot de passe incorrect.', email, next: req.body.suite })));
-    }
-    await startSession(res, user.id);
-    const next = typeof req.body.suite === 'string' && req.body.suite.startsWith('/app') ? req.body.suite : '/app';
-    return res.redirect(next);
-  });
-
-  app.post('/deconnexion', async (req, res) => {
-    await endSession(req, res);
-    res.redirect('/');
+  // Logo d'entreprise (plans Pro et Business), servi depuis la base.
+  app.get('/logo/:id', async (req, res) => {
+    if (!UUID.test(req.params.id)) return res.status(404).end();
+    const logo = await one('SELECT mime, data, updated_at FROM business_logos WHERE user_id = $1', [req.params.id]);
+    if (!logo) return res.status(404).end();
+    res.setHeader('content-type', logo.mime);
+    res.setHeader('cache-control', 'public, max-age=300');
+    if (logo.mime === 'image/svg+xml') res.setHeader('content-security-policy', "default-src 'none'; style-src 'unsafe-inline'");
+    return res.send(logo.data);
   });
 
   // Lien envoyé au client : seules les factures certifiées sont lisibles.
@@ -94,6 +57,22 @@ export function createApp() {
     if (!inv) return res.status(404).send(String(notFound()));
     res.setHeader('x-robots-tag', 'noindex');
     return res.send(String(publicInvoicePage({ inv })));
+  });
+
+  app.get('/f/:id/pdf', async (req, res) => {
+    if (!UUID.test(req.params.id)) return res.status(404).send(String(notFound()));
+    const inv = await getPublicInvoice(req.params.id);
+    if (!inv) return res.status(404).send(String(notFound()));
+    return sendInvoicePdf(res, inv);
+  });
+
+  // Devis partagé avec le client : lisible dès qu'il a été envoyé.
+  app.get('/d/:id', async (req, res) => {
+    if (!UUID.test(req.params.id)) return res.status(404).send(String(notFound()));
+    const quote = await getPublicQuote(req.params.id);
+    if (!quote) return res.status(404).send(String(notFound()));
+    res.setHeader('x-robots-tag', 'noindex');
+    return res.send(String(publicQuotePage({ quote })));
   });
 
   // --- Application ----------------------------------------------------------------------
@@ -129,4 +108,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.PORT || 3000);
   await migrate();
   createApp().listen(port, () => console.log(`FreeFact sur http://localhost:${port}`));
+  startJobs();
 }

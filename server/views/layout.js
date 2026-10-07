@@ -58,8 +58,21 @@ const NAV = [
   ['/app/devis', 'Devis', 'devis'],
   ['/app/clients', 'Clients', 'clients'],
   ['/app/paiements', 'Paiements', 'paiements'],
+  ['/app/notifications', 'Notifications', 'notifications'],
+  ['/app/assistant', 'Assistant', 'assistant', (u) => u.aiEnabled],
+  ['/app/statistiques', 'Statistiques', 'statistiques'],
   ['/app/conformite', 'Conformité', 'conformite'],
 ];
+
+const PLAN_NAMES = { gratuit: 'Gratuit', pro: 'Pro', business: 'Business' };
+
+// Bandeau tant que l'email n'est pas confirmé (inscription par email uniquement).
+function verifyBanner(user) {
+  if (user.email_verified_at) return '';
+  return html`<div class="banner"><form method="post" action="/app/verifier-email/renvoyer" class="banner-form">
+    <span>Confirmez votre adresse <b>${user.email}</b> pour envoyer vos factures par email.</span>
+    <button class="link-btn" type="submit">Renvoyer le lien</button></form></div>`;
+}
 
 export function appPage({ title, user, active, content, counts = {}, banner }) {
   return document({
@@ -70,20 +83,22 @@ export function appPage({ title, user, active, content, counts = {}, banner }) {
   <aside class="app-side">
     ${wordmark('/app')}
     <nav class="app-nav" aria-label="Application">
-      ${NAV.map(
+      ${NAV.filter(([, , , show]) => !show || show(user)).map(
         ([href, label, key]) => html`<a href="${href}" ${key === active ? html`aria-current="page"` : ''}>
-          <span>${label}</span>${counts[key] ? html`<span class="count">${counts[key]}</span>` : ''}</a>`,
+          <span>${label}</span>${counts[key] ? html`<span class="count" aria-label="${counts[key]} à traiter">${counts[key]}</span>` : ''}</a>`,
       )}
       <hr>
+      <a href="/app/abonnement" ${active === 'abonnement' ? html`aria-current="page"` : ''}><span>Abonnement</span><span class="plan-chip">${PLAN_NAMES[user.plan]}</span></a>
       <a href="/app/parametres" ${active === 'parametres' ? html`aria-current="page"` : ''}><span>Paramètres</span></a>
     </nav>
     <div class="who">
       <b>${user.profile?.business_name || user.fullname}</b>
-      <span class="muted">Plan ${user.plan}</span>
+      <span class="muted">${user.email}</span>
       <form method="post" action="/deconnexion"><button class="link-btn small" type="submit">Se déconnecter</button></form>
     </div>
   </aside>
   <div>
+    ${verifyBanner(user)}
     ${banner ? html`<div class="banner">${banner}</div>` : ''}
     <main class="app-main" id="contenu">${content}</main>
   </div>

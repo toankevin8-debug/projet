@@ -3,6 +3,7 @@ import { publicPage, wordmark } from './layout.js';
 import { invoiceSheet } from './sheet.js';
 
 const demo = {
+  demo: true,
   kind: 'facture',
   number: 'FA-2026-0014',
   issue_date: '2026-10-02',
@@ -90,20 +91,28 @@ const FAQ = [
   ],
 ];
 
-export function signupForm({ values = {}, compact = false } = {}) {
+// Erreur affichée sous le champ concerné, reliée par aria-describedby.
+const fieldError = (field, name, error) =>
+  field === name && error ? html`<small class="field-error" id="err-${name}">${error}</small>` : '';
+const invalid = (field, name) => (field === name ? html`aria-invalid="true" aria-describedby="err-${name}"` : '');
+
+export function signupForm({ values = {}, compact = false, error, field } = {}) {
   return html`<form method="post" action="/inscription" novalidate>
     <label class="field"><span>Nom et prénom</span>
-      <input name="fullname" autocomplete="name" required value="${values.fullname || ''}"></label>
+      <input name="fullname" autocomplete="name" required value="${values.fullname || ''}" ${invalid(field, 'fullname')}>
+      ${fieldError(field, 'fullname', error)}</label>
     <label class="field"><span>Email</span>
-      <input name="email" type="email" autocomplete="email" required value="${values.email || ''}"></label>
-    <label class="field"><span>Téléphone</span>
+      <input name="email" type="email" autocomplete="email" required value="${values.email || ''}" ${invalid(field, 'email')}>
+      ${fieldError(field, 'email', error)}</label>
+    <label class="field"><span>Téléphone <span class="muted">(facultatif)</span></span>
       <input name="phone" type="tel" autocomplete="tel" placeholder="07 00 00 00 00" value="${values.phone || ''}">
       ${compact ? '' : html`<small>Pour vous joindre sur WhatsApp en cas de souci avec votre compte.</small>`}</label>
     <label class="field"><span>Mot de passe</span>
-      <input name="password" type="password" autocomplete="new-password" minlength="8" required>
-      <small>8 caractères au moins.</small></label>
-    <label class="check"><input type="checkbox" name="terms" value="1" required ${values.terms ? html`checked` : ''}>
-      <span class="small">J’ai compris que FreeFact est un outil de gestion : je reste responsable de mes factures et de ma situation fiscale.</span></label>
+      <input name="password" type="password" autocomplete="new-password" minlength="8" required ${invalid(field, 'password')}>
+      ${field === 'password' ? fieldError(field, 'password', error) : html`<small>8 caractères au moins.</small>`}</label>
+    <label class="check"><input type="checkbox" name="terms" value="1" required ${values.terms ? html`checked` : ''} ${invalid(field, 'terms')}>
+      <span class="small">J’accepte les <a href="/cgu" target="_blank">conditions d’utilisation</a> et j’ai compris que FreeFact est un outil de gestion : je reste responsable de mes factures et de ma situation fiscale.</span></label>
+    ${fieldError(field, 'terms', error)}
     <button class="btn btn--accent" type="submit" style="width:100%;justify-content:center">Créer mon compte gratuit</button>
     <p class="small muted" style="margin-top:12px">Déjà inscrit ? <a href="/connexion">Se connecter</a></p>
   </form>`;
@@ -380,7 +389,8 @@ ${user ? '' : html`<div class="sticky-cta" data-sticky-cta hidden>
       <p style="margin-top:14px">Facturation pour freelances et petites entreprises de Côte d’Ivoire. FreeFact est un outil de gestion : il ne remplace ni la DGI ni votre expert-comptable. Le portail <a href="https://fne.dgi.gouv.ci" rel="noopener">fne.dgi.gouv.ci</a> fait foi.</p>
     </div>
     <div><h4>Produit</h4><ul><li><a href="/#essai">Essayer sans compte</a></li><li><a href="/#cycle">Parcours d’une facture</a></li><li><a href="/#tarifs">Tarifs</a></li><li><a href="/#questions">Questions</a></li></ul></div>
-    <div><h4>Compte</h4><ul><li><a href="/inscription">Créer un compte</a></li><li><a href="/connexion">Se connecter</a></li></ul></div>
+    <div><h4>Compte</h4><ul><li><a href="/inscription">Créer un compte</a></li><li><a href="/connexion">Se connecter</a></li></ul>
+      <h4 style="margin-top:18px">Légal</h4><ul><li><a href="/cgu">Conditions d’utilisation</a></li><li><a href="/confidentialite">Confidentialité</a></li><li><a href="/mentions-legales">Mentions légales</a></li></ul></div>
   </div>
 </footer>
 <script src="/js/words.js" defer></script>

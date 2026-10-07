@@ -1,6 +1,7 @@
 import { html, raw, amount, fcfa, date, isoDate, options, statusTag, METHOD_LABELS, QUOTE_STATUS_LABELS, REGIME_LABELS } from '../html.js';
 import { appPage, notice } from './layout.js';
 import { linesEditor, REMINDER_TONES } from './invoices.js';
+import { clientHistory } from './extra.js';
 
 // --- Clients ---------------------------------------------------------------------
 
@@ -46,6 +47,8 @@ export function clientFormPage({ user, client, error, navCounts, back }) {
   ${c.id ? html`<div class="actions"><a class="btn btn--accent" href="/app/factures/nouvelle?client=${c.id}">Facturer ce client</a></div>` : ''}
 </div>
 ${notice(error)}
+${clientHistory(c)}
+${c.summary ? html`<div class="panel-title"><h2>Coordonnées</h2></div>` : ''}
 <form method="post" action="${c.id ? `/app/clients/${c.id}` : '/app/clients'}" style="max-width:640px">
   <input type="hidden" name="retour" value="${back || ''}">
   <div class="field"><span class="label">Type de client</span>
@@ -121,6 +124,11 @@ export function quoteFormPage({ user, quote, clients, error, navCounts }) {
   ${q.id
     ? html`<div class="actions">
         <span class="tag tag--${q.status}">${QUOTE_STATUS_LABELS[q.status]}</span>
+        ${q.status !== 'brouillon' ? html`<a class="btn btn--ghost btn--small" href="/d/${q.id}" target="_blank">Version client</a>` : ''}
+        ${['brouillon', 'envoye'].includes(q.status)
+          ? html`<form method="post" action="/app/devis/${q.id}/envoyer"><input type="hidden" name="phone" value="${q.client.phone || ''}">
+              <button class="btn btn--ghost btn--small">${q.status === 'brouillon' ? 'Envoyer sur WhatsApp' : 'Renvoyer sur WhatsApp'}</button></form>`
+          : ''}
         ${q.invoice_id
           ? html`<a class="btn btn--small" href="/app/factures/${q.invoice_id}">Voir la facture</a>`
           : ['refuse', 'expire'].includes(q.status)
@@ -203,7 +211,7 @@ export function paymentsPage({ user, payments, open, navCounts }) {
 
 // --- Paramètres / onboarding ---------------------------------------------------------
 
-export function settingsPage({ user, error, message, navCounts, onboarding, usage }) {
+export function settingsPage({ user, error, message, navCounts, onboarding, usage, account = {} }) {
   const p = user.profile || {};
   const v = (k, d = '') => (p[k] ?? d);
   return appPage({
@@ -270,7 +278,7 @@ ${notice(error)}${notice(message, 'ok')}
           <span class="eyebrow">Abonnement</span>
           <h3>Plan ${user.plan}</h3>
           <p class="small">Actions IA ce mois : <b class="num">${usage.used}${usage.quota == null ? '' : ` / ${usage.quota}`}</b></p>
-          <p class="small muted" style="margin:0">Le paiement par Mobile Money arrive avec l’agrégateur de paiement.</p>
+          <a class="btn btn--ghost btn--small" href="/app/abonnement">Gérer l’abonnement</a>
         </div>
         <div class="side-box">
           <span class="eyebrow">Sauvegarde</span>
@@ -278,7 +286,8 @@ ${notice(error)}${notice(message, 'ok')}
           <a class="btn btn--ghost btn--small" href="/app/export.json">Télécharger la sauvegarde</a>
         </div>`}
   </aside>
-</form>`,
+</form>
+${onboarding ? '' : accountSections(user, account)}`,
   });
 }
 
@@ -351,3 +360,42 @@ export function compliancePage({ user, navCounts, stats }) {
 }
 
 export { REMINDER_TONES };
+
+// Sections hors du formulaire principal : logo, notifications, sécurité.
+function accountSections(user, a) {
+  return html`<div class="settings-more">
+  <section id="logo">
+    <h2>Logo sur vos factures</h2>
+    ${a.canLogo
+      ? html`<div class="logo-row">
+          ${user.profile?.logo_url ? html`<img class="logo-preview" src="${user.profile.logo_url}" alt="Logo actuel">` : html`<p class="muted small">Aucun logo pour l’instant.</p>`}
+          <div>
+            <label class="btn btn--ghost btn--small" for="logo-file">${user.profile?.logo_url ? 'Remplacer le logo' : 'Ajouter un logo'}</label>
+            <input id="logo-file" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden data-logo-upload>
+            ${user.profile?.logo_url ? html`<form method="post" action="/app/parametres/logo/supprimer" style="display:inline"><button class="link-btn small link-btn--danger">Retirer</button></form>` : ''}
+            <p class="small muted" data-logo-status>PNG, JPEG, WebP ou SVG, 300 Ko au plus. Il apparaît sur les factures émises à partir de maintenant.</p>
+          </div>
+        </div>`
+      : html`<p class="small">Le logo est disponible à partir du plan Pro. <a href="/app/abonnement">Voir les plans</a></p>`}
+  </section>
+  <section id="notifications">
+    <h2>Notifications</h2>
+    <form method="post" action="/app/parametres/notifications">
+      <label class="check"><input type="checkbox" name="notify_email" value="1" ${a.notifyEmail ? html`checked` : ''}>
+        <span>Recevoir un récapitulatif par email, au plus une fois par jour, quand une facture est à certifier, en retard ou proche de l’échéance.</span></label>
+      <button class="btn btn--ghost btn--small">Enregistrer</button>
+    </form>
+  </section>
+  <section id="securite">
+    <h2>Sécurité</h2>
+    <p class="small">Compte : <b>${user.email}</b> · ${user.email_verified_at ? 'adresse confirmée' : 'adresse non confirmée'}${a.google ? ' · connexion Google active' : ''}</p>
+    <form method="post" action="/app/parametres/mot-de-passe" class="grid-2" style="max-width:640px">
+      ${a.hasPassword
+        ? html`<label class="field"><span>Mot de passe actuel</span><input name="current" type="password" autocomplete="current-password" required></label>`
+        : html`<p class="small muted" style="grid-column:1/-1">Vous vous connectez avec Google ; vous pouvez aussi définir un mot de passe.</p>`}
+      <label class="field"><span>Nouveau mot de passe</span><input name="password" type="password" autocomplete="new-password" minlength="8" required></label>
+      <div><button class="btn btn--ghost btn--small">Changer le mot de passe</button></div>
+    </form>
+  </section>
+</div>`;
+}

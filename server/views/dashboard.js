@@ -1,5 +1,5 @@
 import { html, raw, amount, fcfa, date, statusTag } from '../html.js';
-import { appPage } from './layout.js';
+import { appPage, notice } from './layout.js';
 
 const SERIES = [
   { key: 'billed', label: 'Facturé', color: '#2f5f9a' },
@@ -87,7 +87,7 @@ function onboarding(steps) {
   </section>`;
 }
 
-export function dashboardPage({ user, data, counts, banner, express }) {
+export function dashboardPage({ user, data, counts, banner, express, forecast: forecastNote, message }) {
   const { figures: f, forecast, months, todo, recent, steps } = data;
   const first = user.fullname.split(' ')[0];
   return appPage({
@@ -103,6 +103,7 @@ export function dashboardPage({ user, data, counts, banner, express }) {
   <div class="actions"><a class="btn btn--accent" href="/app/factures/nouvelle">Nouvelle facture</a></div>
 </div>
 
+${notice(message, 'ok')}
 ${onboarding(steps)}
 <div class="figures">
   ${figure('Facturé ce mois', f.billed_month)}
@@ -112,6 +113,9 @@ ${onboarding(steps)}
   ${figure('Attendu sous 7 jours', forecast.expected_7_days, 'Échéance + délai habituel du client')}
   ${figure('Attendu sous 30 jours', forecast.expected_30_days, 'Prévision, pas une promesse')}
 </div>
+${forecastNote || (user.aiEnabled && f.outstanding > 0
+  ? html`<form method="post" action="/app/previsions-ia" class="ai-ask"><button class="link-btn small" type="submit">Faire commenter ces prévisions par l’IA (1 action)</button></form>`
+  : '')}
 
 <div class="cols">
   <section>

@@ -164,3 +164,85 @@ if (express && Recognition) {
     btn.textContent = 'Arrêter';
   });
 }
+
+// --- Logo : envoi direct du fichier (le serveur accepte le corps brut de l'image) ----------------
+const logoInput = document.querySelector('[data-logo-upload]');
+if (logoInput) {
+  const status = document.querySelector('[data-logo-status]');
+  logoInput.addEventListener('change', async () => {
+    const file = logoInput.files[0];
+    if (!file) return;
+    if (file.size > 300 * 1024) { status.textContent = 'Fichier trop lourd : 300 Ko au plus.'; return; }
+    status.textContent = 'Envoi en cours…';
+    const res = await fetch('/app/parametres/logo', { method: 'POST', headers: { 'content-type': file.type }, body: file });
+    if (res.ok) { window.location.reload(); return; }
+    const body = await res.json().catch(() => ({}));
+    status.textContent = body.error || 'Le logo n’a pas pu être enregistré.';
+  });
+}
+
+// --- Brouillons sauvegardés sur l'appareil -----------------------------------------------------
+// Le réseau peut couper hors d'Abidjan : le formulaire de facture est gardé localement à chaque
+// frappe et proposé à la restauration si la page est rouverte sans avoir été enregistrée.
+const draftForm = document.querySelector('form[data-invoice-form]');
+if (draftForm) {
+  const key = `ff-draft:${draftForm.getAttribute('action')}`;
+  const store = {
+    get: () => { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } },
+    set: (v) => { try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* stockage indisponible */ } },
+    clear: () => { try { localStorage.removeItem(key); } catch { /* idem */ } },
+  };
+  const snapshot = () => ({ at: Date.now(), fields: [...new FormData(draftForm).entries()].filter(([, v]) => typeof v === 'string') });
+  const saved = store.get();
+  const serverHasError = document.querySelector('.notice--error');
+  if (saved && !serverHasError && Date.now() - saved.at < 7 * 86400000) {
+    const current = JSON.stringify(snapshot().fields);
+    if (JSON.stringify(saved.fields) !== current) {
+      const bar = document.createElement('div');
+      bar.className = 'notice notice--warn draft-restore';
+      const when = new Date(saved.at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+      bar.innerHTML = `<span>Une version non enregistrée de ce formulaire a été gardée sur cet appareil (${when}).</span>`;
+      const restore = Object.assign(document.createElement('button'), { type: 'button', className: 'btn btn--small', textContent: 'La reprendre' });
+      const drop = Object.assign(document.createElement('button'), { type: 'button', className: 'link-btn small', textContent: 'L’ignorer' });
+      bar.append(restore, drop);
+      draftForm.before(bar);
+      drop.addEventListener('click', () => { store.clear(); bar.remove(); });
+      restore.addEventListener('click', () => {
+        // Recrée autant de lignes que nécessaire, puis remplit chaque champ par son nom.
+        const lineCount = new Set(saved.fields.map(([k]) => (k.match(/^items\[(\d+)\]/) || [])[1]).filter(Boolean)).size;
+        const add = draftForm.querySelector('[data-add-line]');
+        while (add && draftForm.querySelectorAll('[data-line]').length < lineCount) add.click();
+        const rows = [...draftForm.querySelectorAll('[data-line]')];
+        const indexes = [...new Set(saved.fields.map(([k]) => (k.match(/^items\[(\d+)\]/) || [])[1]).filter(Boolean))];
+        draftForm.querySelectorAll('[data-vat]').forEach((c) => { c.checked = false; });
+        for (const [name, value] of saved.fields) {
+          const m = name.match(/^items\[(\d+)\]\[(\w+)\]$/);
+          let el;
+          if (m) {
+            const row = rows[indexes.indexOf(m[1])];
+            el = row?.querySelector(`[name$="[${m[2]}]"]`);
+          } else {
+            el = draftForm.querySelector(`[name="${CSS.escape(name)}"]`);
+          }
+          if (!el) continue;
+          if (el.type === 'checkbox') el.checked = true; else el.value = value;
+        }
+        draftForm.dispatchEvent(new Event('input'));
+        bar.remove();
+      });
+    }
+  }
+  let timer;
+  draftForm.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => store.set(snapshot()), 400); });
+  // On n'efface la copie locale qu'une fois la page suivante chargée sans erreur :
+  // si le réseau coupe pendant l'envoi, le brouillon reste disponible.
+  draftForm.addEventListener('submit', () => { try { sessionStorage.setItem('ff-pending', key); } catch { /* idem */ } });
+}
+
+try {
+  const pending = sessionStorage.getItem('ff-pending');
+  if (pending && !document.querySelector('.notice--error')) {
+    localStorage.removeItem(pending);
+    sessionStorage.removeItem('ff-pending');
+  }
+} catch { /* stockage indisponible */ }

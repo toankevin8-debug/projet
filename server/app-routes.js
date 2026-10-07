@@ -8,7 +8,10 @@ import { invoiceListPage, invoiceFormPage, invoiceShowPage } from './views/invoi
 import {
   clientListPage, clientFormPage, quoteListPage, quoteFormPage, paymentsPage, settingsPage, compliancePage,
 } from './views/pages.js';
-import { expressBlock, registerAiRoutes } from './ai.js';
+import { AI_ENABLED, expressBlock, registerAiRoutes } from './ai.js';
+import { MAIL_ENABLED } from './mailer.js';
+import { FNE_AUTOMATIC } from './fne.js';
+import { registerExtraRoutes } from './app-extra.js';
 
 export const router = Router();
 
@@ -25,6 +28,11 @@ const MESSAGES = {
   avoir: 'Avoir préparé : retirez ou ajustez les lignes pour un avoir partiel, puis émettez-le.',
   copie: 'Copie créée en brouillon.',
   convertie: 'Devis converti : voici le brouillon de facture.',
+  lien_envoye: 'Un nouveau lien de confirmation vient de partir vers votre adresse email.',
+  email_verifie: 'Adresse email confirmée. Vous pouvez envoyer vos factures par email.',
+  email: 'Facture envoyée par email, PDF joint.',
+  mdp: 'Mot de passe modifié. Vos autres sessions ont été fermées.',
+  devis_envoye: 'Devis marqué comme envoyé.',
 };
 const flash = (req) => MESSAGES[req.query.ok] || null;
 
@@ -39,6 +47,7 @@ router.use((req, res, next) => {
 
 // Compteur de la navigation (factures à certifier ou en retard).
 router.use(async (req, _res, next) => {
+  req.user.aiEnabled = AI_ENABLED;
   req.navCounts = req.user.profile ? await data.navCounts(req.user.id) : {};
   next();
 });
@@ -53,6 +62,7 @@ router.get('/', async (req, res) => {
     data: dash,
     counts: req.navCounts,
     express: expressBlock({ usage }),
+    message: flash(req),
   })));
 });
 
@@ -125,8 +135,15 @@ async function showInvoice(req, res, { error, status = 200 } = {}) {
     const clients = await data.listClients(req.user.id);
     return res.status(status).send(String(invoiceFormPage({ user: req.user, invoice: inv, clients, error, navCounts: req.navCounts })));
   }
+  const queryError = typeof req.query.erreur === 'string' ? req.query.erreur.slice(0, 300) : null;
   return res.status(status).send(String(invoiceShowPage({
-    user: req.user, inv, error, message: error ? null : flash(req), navCounts: req.navCounts, publicUrl: publicUrl(req, inv.id),
+    user: req.user, inv, error: error || queryError, message: error || queryError ? null : flash(req), navCounts: req.navCounts,
+    publicUrl: publicUrl(req, inv.id),
+    features: {
+      mail: MAIL_ENABLED,
+      ai: AI_ENABLED,
+      autoCertify: FNE_AUTOMATIC && (await data.planAllows(req.user.id, 'fne_api_certification')),
+    },
   })));
 }
 
@@ -198,7 +215,9 @@ router.post('/factures/:id/relance', action(async (req, res) => {
   const inv = await data.getInvoice(req.user.id, req.params.id);
   if (!inv) return res.status(404).send('Facture introuvable');
   const tone = TONE_TEMPLATES[req.body.tone] ? req.body.tone : 'cordial';
-  const message = TONE_TEMPLATES[tone]({
+  // Message relu (et éventuellement modifié) après rédaction par l'IA, sinon modèle standard.
+  const custom = text(req.body.message)?.slice(0, 2000);
+  const message = custom || TONE_TEMPLATES[tone]({
     client: inv.buyer_snapshot.name,
     number: inv.number,
     amount: amount(inv.remaining),
@@ -206,7 +225,7 @@ router.post('/factures/:id/relance', action(async (req, res) => {
     url: publicUrl(req, inv.id),
     seller: inv.seller_snapshot.business_name,
   });
-  await data.addReminder(req.user.id, inv.id, { channel: 'whatsapp', tone, message });
+  await data.addReminder(req.user.id, inv.id, { channel: 'whatsapp', tone, message, ai_generated: Boolean(custom) && req.body.ai === '1' });
   return res.redirect(whatsappLink(text(req.body.phone), message));
 }));
 
@@ -222,7 +241,7 @@ router.get('/clients/nouveau', (req, res) => {
 });
 
 router.get('/clients/:id', async (req, res) => {
-  const client = await data.getClient(req.user.id, req.params.id);
+  const client = await data.clientDetail(req.user.id, req.params.id);
   if (!client) return res.status(404).send('Client introuvable');
   return res.send(String(clientFormPage({ user: req.user, client, navCounts: req.navCounts })));
 });
@@ -340,11 +359,17 @@ router.get('/conformite', async (req, res) => {
 });
 
 router.get('/parametres', async (req, res) => {
-  const usage = await data.aiUsageThisMonth(req.user.id);
+  const [usage, account] = await Promise.all([data.aiUsageThisMonth(req.user.id), accountInfo(req.user.id)]);
+  const queryError = typeof req.query.erreur === 'string' ? req.query.erreur.slice(0, 300) : null;
   res.send(String(settingsPage({
-    user: req.user, navCounts: req.navCounts, onboarding: !req.user.profile, usage, message: flash(req),
+    user: req.user, navCounts: req.navCounts, onboarding: !req.user.profile, usage, account, message: queryError ? null : flash(req), error: queryError,
   })));
 });
+
+async function accountInfo(userId) {
+  const row = await one('SELECT notify_email, password_hash IS NOT NULL AS has_password, google_id IS NOT NULL AS google FROM users WHERE id = $1', [userId]);
+  return { notifyEmail: row.notify_email, hasPassword: row.has_password, google: row.google, canLogo: await data.planAllows(userId, 'custom_logo') };
+}
 
 router.post('/parametres', async (req, res) => {
   const b = req.body;
@@ -384,10 +409,10 @@ router.post('/parametres', async (req, res) => {
       : err.code === '23514' ? 'Valeur refusée : préfixes en majuscules (8 caractères max, tous différents), taux entre 0 et 100, délai entre 0 et 365 jours.'
       : userMessage(err);
     if (!msg) throw err;
-    const usage = await data.aiUsageThisMonth(req.user.id);
+    const [usage, account] = await Promise.all([data.aiUsageThisMonth(req.user.id), accountInfo(req.user.id)]);
     return res.status(422).send(String(settingsPage({
       user: { ...req.user, profile: { ...(req.user.profile || {}), ...profile } },
-      navCounts: req.navCounts, onboarding, usage, error: msg,
+      navCounts: req.navCounts, onboarding, usage, account, error: msg,
     })));
   }
   if (onboarding) {
@@ -404,3 +429,4 @@ router.get('/export.json', async (req, res) => {
 });
 
 registerAiRoutes(router);
+registerExtraRoutes(router);

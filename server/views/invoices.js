@@ -21,7 +21,7 @@ export function invoiceListPage({ user, invoices, counts, filter, navCounts, mes
     content: html`
 <div class="page-head">
   <div><p class="eyebrow">Factures et avoirs</p><h1>Factures</h1></div>
-  <div class="actions"><a class="btn btn--accent" href="/app/factures/nouvelle">Nouvelle facture</a></div>
+  <div class="actions">${counts.en_retard > 0 ? html`<a class="btn btn--ghost" href="/app/relances">Relances en lot</a>` : ''}<a class="btn btn--accent" href="/app/factures/nouvelle">Nouvelle facture</a></div>
 </div>
 ${notice(message, 'ok')}
 <nav class="filters" aria-label="Filtrer">
@@ -207,7 +207,8 @@ export function suggestedTone(dueDate) {
   return 'dernier_rappel';
 }
 
-export function invoiceShowPage({ user, inv, error, message, navCounts, publicUrl }) {
+export function invoiceShowPage({ user, inv, error, message, navCounts, publicUrl, features = {} }) {
+  const simulated = inv.certification?.api_response?.simulation;
   const certified = Boolean(inv.certification);
   const isCredit = inv.kind === 'avoir';
   const canPay = !isCredit && inv.remaining > 0;
@@ -224,6 +225,7 @@ export function invoiceShowPage({ user, inv, error, message, navCounts, publicUr
   <h1 class="mono" style="font-family:var(--mono);font-weight:500;letter-spacing:-0.02em">${inv.number}</h1></div>
   <div class="actions">
     ${statusTag(inv.display_status)}
+    <a class="btn btn--ghost btn--small" href="/app/factures/${inv.id}/pdf" target="_blank">PDF</a>
     <button class="btn btn--ghost btn--small" type="button" data-print>Imprimer</button>
     ${!isCredit
       ? html`<form method="post" action="/app/factures/${inv.id}/dupliquer"><button class="btn btn--ghost btn--small">Dupliquer</button></form>`
@@ -234,6 +236,7 @@ export function invoiceShowPage({ user, inv, error, message, navCounts, publicUr
   </div>
 </div>
 ${notice(error)}${notice(message, 'ok')}
+${simulated ? html`<p class="sim-banner">Certification simulée (FNE_MODE=simulation) : numéro fictif, sans valeur fiscale.</p>` : ''}
 ${track(inv)}
 
 <div class="doc-layout">
@@ -247,6 +250,11 @@ ${track(inv)}
             <li>Ouvrez <a href="https://fne.dgi.gouv.ci" target="_blank" rel="noopener">fne.dgi.gouv.ci</a> et déclarez la facture ${inv.number} pour ${fcfa(inv.total_ttc)}.</li>
             <li>Reportez ici le numéro fiscal et la référence du QR code qui vous sont attribués.</li>
           </ol>
+          ${features.autoCertify
+            ? html`<form method="post" action="/app/factures/${inv.id}/certifier-auto" style="margin-bottom:16px">
+                <button class="btn btn--accent" style="width:100%">Certifier automatiquement (API FNE)</button></form>
+                <p class="small muted">Ou saisissez le numéro obtenu sur la plateforme :</p>`
+            : ''}
           <form method="post" action="/app/factures/${inv.id}/certifier">
             <label class="field"><span>Numéro fiscal DGI</span><input name="fiscal_number" required autocomplete="off"></label>
             <label class="field"><span>Date de certification</span><input name="certified_at" type="date" required value="${isoDate(new Date())}"></label>
@@ -264,10 +272,16 @@ ${track(inv)}
               <input name="phone" type="tel" value="${inv.client.phone || ''}" placeholder="07 00 00 00 00"></label>
             <button class="btn btn--ok" style="width:100%;justify-content:center">Envoyer sur WhatsApp</button>
           </form>
-          <p class="small" style="margin:12px 0 0">
-            <a href="mailto:${inv.client.email || ''}?subject=${encodeURIComponent(`Facture ${inv.number}`)}&body=${encodeURIComponent(shareMessage(inv, publicUrl))}" data-mark-sent="/app/factures/${inv.id}/envoyer">Envoyer par email</a>
-            · <button type="button" class="link-btn" data-copy="${publicUrl}">Copier le lien</button>
-          </p>
+          ${features.mail
+            ? html`<form method="post" action="/app/factures/${inv.id}/email" style="margin-top:16px">
+                <label class="field"><span>Email du client</span><input name="to" type="email" value="${inv.client.email || ''}" required></label>
+                <button class="btn btn--ghost" style="width:100%">Envoyer par email, PDF joint</button>
+              </form>
+              <p class="small" style="margin:12px 0 0"><button type="button" class="link-btn" data-copy="${publicUrl}">Copier le lien</button></p>`
+            : html`<p class="small" style="margin:12px 0 0">
+                <a href="mailto:${inv.client.email || ''}?subject=${encodeURIComponent(`Facture ${inv.number}`)}&body=${encodeURIComponent(shareMessage(inv, publicUrl))}" data-mark-sent="/app/factures/${inv.id}/envoyer">Envoyer par email</a>
+                · <button type="button" class="link-btn" data-copy="${publicUrl}">Copier le lien</button>
+              </p>`}
         </div>`}
 
     ${canPay
@@ -293,7 +307,8 @@ ${track(inv)}
           <form method="post" action="/app/factures/${inv.id}/relance">
             <label class="field"><span>Ton</span><select name="tone">${options(REMINDER_TONES, suggestedTone(inv.due_date))}</select></label>
             <input type="hidden" name="phone" value="${inv.client.phone || ''}">
-            <button class="btn btn--ghost" style="width:100%;justify-content:center">Préparer la relance WhatsApp</button>
+            <button class="btn btn--ghost" style="width:100%;justify-content:center">Relancer avec le modèle standard</button>
+            ${features.ai ? html`<button class="btn btn--accent" style="width:100%;margin-top:10px" formaction="/app/factures/${inv.id}/relance-ia">Faire rédiger par l’IA, puis relire</button>` : ''}
           </form>
           ${inv.reminders.length ? html`<p class="small muted" style="margin:10px 0 0">${inv.reminders.length} relance${inv.reminders.length > 1 ? 's' : ''}, la dernière le ${date(inv.reminders[0].sent_at)}.</p>` : ''}
         </div>`
@@ -324,6 +339,34 @@ export function publicInvoicePage({ inv }) {
   </div>
   ${invoiceSheet(toSheet(inv))}
   <p class="small muted no-print" style="margin-top:18px;display:flex;gap:8px;align-items:center">Facture éditée avec ${wordmark()}</p>
+</main>
+<script src="/js/words.js" defer></script>
+<script src="/js/app.js" defer></script>`,
+  });
+}
+
+// Devis partagé avec le client (lien /d/:id). Les totaux sont calculés à partir des lignes
+// avec le taux de TVA actuel du profil : un devis n'est pas un document figé.
+export function publicQuotePage({ quote }) {
+  const seller = quote.seller;
+  const vatOn = seller.vat_applicable;
+  const ht = quote.items.reduce((sum, it) => sum + Math.round(Number(it.qty) * it.unit_price), 0);
+  const taxable = quote.items.filter((it) => it.vat_applicable).reduce((sum, it) => sum + Math.round(Number(it.qty) * it.unit_price), 0);
+  const vat = vatOn ? Math.round((taxable * Number(seller.vat_rate)) / 100) : 0;
+  const doc = {
+    kind: 'devis', number: quote.number, issue_date: quote.issue_date, valid_until: quote.valid_until,
+    seller, buyer: quote.client, items: quote.items, vat_applicable: vatOn, vat_rate: seller.vat_rate,
+    total_ht: ht, total_vat: vat, total_ttc: ht + vat, notes: quote.notes,
+  };
+  return plainPage({
+    title: `Devis ${quote.number} · ${seller.business_name}`,
+    content: html`<main class="wrap" style="max-width:860px;padding-top:32px;padding-bottom:48px">
+  <div class="no-print" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:12px;flex-wrap:wrap">
+    <span class="small muted">Devis transmis par ${seller.business_name}</span>
+    <button class="btn btn--small" type="button" data-print>Imprimer ou enregistrer en PDF</button>
+  </div>
+  ${invoiceSheet(doc, { showStamp: false })}
+  <p class="small muted no-print" style="margin-top:18px;display:flex;gap:8px;align-items:center">Devis édité avec ${wordmark()}</p>
 </main>
 <script src="/js/words.js" defer></script>
 <script src="/js/app.js" defer></script>`,

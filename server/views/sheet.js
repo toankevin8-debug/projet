@@ -18,15 +18,18 @@ function qrPattern(seed) {
   return raw(`<svg class="qr" viewBox="0 0 9 9" aria-hidden="true" fill="currentColor">${cells.join('')}</svg>`);
 }
 
-export function stamp(certification) {
+// Le motif de QR n'est dessiné que sur la facture de démonstration : sur une vraie facture,
+// le QR code est celui de la DGI, dont FreeFact n'affiche que la référence saisie.
+export function stamp(certification, { demo = false } = {}) {
   if (!certification) {
     return html`<div class="stamp stamp--pending"><span>En attente de<br>certification FNE</span></div>`;
   }
-  return html`<div class="stamp" title="Facture certifiée par la DGI">
-    ${qrPattern(certification.fiscal_number)}
+  return html`<div class="stamp ${demo ? '' : 'stamp--text'}" title="Facture certifiée par la DGI">
+    ${demo ? qrPattern(certification.fiscal_number) : ''}
     <span>Certifiée FNE</span>
     <span>N° ${certification.fiscal_number}</span>
     <span>${longDate(certification.certified_at)}</span>
+    ${certification.qr_reference ? html`<span>Réf. QR ${certification.qr_reference}</span>` : ''}
   </div>`;
 }
 
@@ -38,9 +41,11 @@ export function invoiceSheet(doc, { className = '', showStamp = true } = {}) {
   const s = doc.seller || {};
   const b = doc.buyer || {};
   const isCredit = doc.kind === 'avoir';
+  const isQuote = doc.kind === 'devis';
   return html`<article class="sheet ${className}">
     <header class="sheet-head">
       <div class="seller">
+        ${s.logo_url ? html`<img class="sheet-logo" src="${s.logo_url}" alt="Logo ${s.business_name}">` : ''}
         <b>${s.business_name}${s.legal_form ? `, ${s.legal_form}` : ''}</b>
         ${s.address}${s.city ? `, ${s.city}` : ''}<br>
         NCC ${s.ncc || '—'}${s.rccm ? ` · RCCM ${s.rccm}` : ''}<br>
@@ -48,7 +53,7 @@ export function invoiceSheet(doc, { className = '', showStamp = true } = {}) {
         ${s.phone || s.email ? html`<br>${[s.phone, s.email].filter(Boolean).join(' · ')}` : ''}
       </div>
       <div class="sheet-title">
-        <div class="kind">${isCredit ? 'Facture d’avoir' : 'Facture'}</div>
+        <div class="kind">${isQuote ? 'Devis' : isCredit ? 'Facture d’avoir' : 'Facture'}</div>
         <div class="no">${doc.number || 'BROUILLON'}</div>
         <div class="muted">${doc.issue_date ? `Émise le ${longDate(doc.issue_date)}` : 'Non émise'}</div>
       </div>
@@ -61,8 +66,10 @@ export function invoiceSheet(doc, { className = '', showStamp = true } = {}) {
         ${b.ncc ? html`<br>NCC ${b.ncc}` : ''}
       </div>
       <div>
-        <span class="eyebrow">${isCredit ? 'Facture d’origine' : 'Échéance'}</span>
-        ${isCredit
+        <span class="eyebrow">${isQuote ? 'Validité' : isCredit ? 'Facture d’origine' : 'Échéance'}</span>
+        ${isQuote
+          ? html`<b>${doc.valid_until ? `Jusqu’au ${longDate(doc.valid_until)}` : '30 jours'}</b><br><span class="muted">Facture proforma, non numérotée fiscalement</span>`
+          : isCredit
           ? html`<b class="mono">${doc.ref_number || ''}</b>`
           : html`<b>${doc.due_date ? longDate(doc.due_date) : `${doc.terms_days ?? 30} jours après émission`}</b>
                  ${doc.terms_days != null ? html`<br><span class="muted">Paiement à ${doc.terms_days} jours</span>` : ''}`}
@@ -94,11 +101,11 @@ export function invoiceSheet(doc, { className = '', showStamp = true } = {}) {
     <footer class="sheet-foot">
       <div>
         ${s.payment_info ? html`<div>${s.payment_info}</div>` : ''}
-        ${!isCredit ? html`<div>${s.late_penalty_text || 'Tout retard de paiement peut donner lieu à des pénalités de retard.'}</div>` : ''}
+        ${!isCredit && !isQuote ? html`<div>${s.late_penalty_text || 'Tout retard de paiement peut donner lieu à des pénalités de retard.'}</div>` : ''}
         ${doc.notes ? html`<div>${doc.notes}</div>` : ''}
         ${s.signature_text ? html`<div>${s.signature_text}</div>` : ''}
       </div>
-      ${showStamp && doc.number ? stamp(doc.certification) : ''}
+      ${showStamp && doc.number ? stamp(doc.certification, { demo: doc.demo }) : ''}
     </footer>
   </article>`;
 }
