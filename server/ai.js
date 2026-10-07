@@ -53,7 +53,7 @@ export async function parseSentence(sentence, clientNames) {
 export function expressBlock({ usage, error, sentence = '' }) {
   if (!AI_ENABLED) return '';
   const left = usage.quota == null ? null : Math.max(0, usage.quota - usage.used);
-  return html`<form method="post" action="/app/express" class="side-box" style="margin-bottom:28px" data-express>
+  return html`<form method="post" action="/app/express" class="side-box express" style="margin-bottom:24px" data-express>
     <span class="eyebrow">Facture express</span>
     <label class="field" style="margin:8px 0 10px"><span class="visually-hidden">Décrivez la vente</span>
       <textarea name="sentence" rows="2" required maxlength="600" placeholder="Ex. 3 affiches à 25 000 et un logo à 80 000 pour la Boulangerie des Deux-Plateaux, paiement sous 15 jours">${sentence}</textarea></label>

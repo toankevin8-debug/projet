@@ -1,7 +1,8 @@
 import { html } from '../html.js';
+import { icon } from './icons.js';
 
 const FONTS =
-  'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap';
+  'https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap';
 
 function document({ title, description, body, bodyClass = '' }) {
   return html`<!doctype html>
@@ -37,7 +38,8 @@ export function publicPage({ title, description, user, content, nav = true, curr
     ${wordmark()}
     <nav class="site-nav" aria-label="Navigation principale">
       ${nav
-        ? html`<a class="hide-sm" href="/#cycle">Comment ça marche</a>
+        ? html`<a class="hide-sm" href="/#fonctions">Fonctionnalités</a>
+               <a class="hide-sm" href="/#essai">Essayer</a>
                <a class="hide-sm" href="/#tarifs">Tarifs</a>
                <a class="hide-sm" href="/#questions">Questions</a>`
         : ''}
@@ -53,15 +55,15 @@ ${content}`,
 }
 
 const NAV = [
-  ['/app', 'Tableau de bord', 'dashboard'],
-  ['/app/factures', 'Factures', 'factures'],
-  ['/app/devis', 'Devis', 'devis'],
-  ['/app/clients', 'Clients', 'clients'],
-  ['/app/paiements', 'Paiements', 'paiements'],
-  ['/app/notifications', 'Notifications', 'notifications'],
-  ['/app/assistant', 'Assistant', 'assistant', (u) => u.aiEnabled],
-  ['/app/statistiques', 'Statistiques', 'statistiques'],
-  ['/app/conformite', 'Conformité', 'conformite'],
+  ['/app', 'Tableau de bord', 'dashboard', 'home'],
+  ['/app/factures', 'Factures', 'factures', 'file'],
+  ['/app/devis', 'Devis', 'devis', 'quote'],
+  ['/app/clients', 'Clients', 'clients', 'users'],
+  ['/app/paiements', 'Paiements', 'paiements', 'wallet'],
+  ['/app/notifications', 'Notifications', 'notifications', 'bell'],
+  ['/app/assistant', 'Assistant', 'assistant', 'message', (u) => u.aiEnabled],
+  ['/app/statistiques', 'Statistiques', 'statistiques', 'chart'],
+  ['/app/conformite', 'Conformité', 'conformite', 'shield'],
 ];
 
 const PLAN_NAMES = { gratuit: 'Gratuit', pro: 'Pro', business: 'Business' };
@@ -83,13 +85,13 @@ export function appPage({ title, user, active, content, counts = {}, banner }) {
   <aside class="app-side">
     ${wordmark('/app')}
     <nav class="app-nav" aria-label="Application">
-      ${NAV.filter(([, , , show]) => !show || show(user)).map(
-        ([href, label, key]) => html`<a href="${href}" ${key === active ? html`aria-current="page"` : ''}>
-          <span>${label}</span>${counts[key] ? html`<span class="count" aria-label="${counts[key]} à traiter">${counts[key]}</span>` : ''}</a>`,
+      ${NAV.filter(([, , , , show]) => !show || show(user)).map(
+        ([href, label, key, ico]) => html`<a href="${href}" ${key === active ? html`aria-current="page"` : ''}>
+          ${icon(ico, { size: 18 })}<span>${label}</span>${counts[key] ? html`<span class="count" aria-label="${counts[key]} à traiter">${counts[key]}</span>` : ''}</a>`,
       )}
       <hr>
-      <a href="/app/abonnement" ${active === 'abonnement' ? html`aria-current="page"` : ''}><span>Abonnement</span><span class="plan-chip">${PLAN_NAMES[user.plan]}</span></a>
-      <a href="/app/parametres" ${active === 'parametres' ? html`aria-current="page"` : ''}><span>Paramètres</span></a>
+      <a href="/app/abonnement" ${active === 'abonnement' ? html`aria-current="page"` : ''}>${icon('card', { size: 18 })}<span>Abonnement</span><span class="plan-chip">${PLAN_NAMES[user.plan]}</span></a>
+      <a href="/app/parametres" ${active === 'parametres' ? html`aria-current="page"` : ''}>${icon('settings', { size: 18 })}<span>Paramètres</span></a>
     </nav>
     <div class="who">
       <b>${user.profile?.business_name || user.fullname}</b>

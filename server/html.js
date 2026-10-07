@@ -32,8 +32,8 @@ export function html(strings, ...values) {
 
 const moneyFormat = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
 
-// 182900 → « 182 900 » (espace fine insécable, comme sur un document imprimé).
-export const amount = (n) => moneyFormat.format(Number(n) || 0).replace(/\s/g, ' ');
+// 182900 → « 182 900 » (espace insécable : l'espace fine est trop étroite dans la police d'affichage).
+export const amount = (n) => moneyFormat.format(Number(n) || 0).replace(/\s/g, '\u00a0');
 export const fcfa = (n) => `${amount(n)} FCFA`;
 
 const dateFormat = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });

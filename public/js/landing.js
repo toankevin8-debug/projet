@@ -2,7 +2,7 @@
 (() => {
   const { inWords } = window.FreeFact;
   const fmt = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
-  const money = (n) => `${fmt.format(n).replace(/\s/g, ' ')} FCFA`;
+  const money = (n) => `${fmt.format(n).replace(/\s/g, ' ')} FCFA`;
   const num = (v) => { const n = Number(String(v).replace(/[\s  ]/g, '')); return Number.isFinite(n) && n > 0 ? Math.round(n) : 0; };
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 

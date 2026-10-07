@@ -87,7 +87,7 @@ test('parcours complet d’une facture', { skip: !enabled && 'DATABASE_URL non d
 
   r = await req('GET', `/app/factures/${invoiceId}`);
   assert.match(r.body, new RegExp(`FA-${new Date().getFullYear()}-0001`));
-  assert.match(r.body, /182 900/);
+  assert.match(r.body, /182[\u00a0\u202f ]900/);
   assert.match(r.body, /cent quatre-vingt-deux mille neuf cents/);
 
   // Envoi refusé avant certification, lien public fermé.

@@ -2,7 +2,7 @@
 // il ajoute les totaux en direct, l'ajout de lignes et quelques confirmations.
 
 const fmt = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
-const money = (n) => `${fmt.format(n).replace(/\s/g, ' ')} FCFA`;
+const money = (n) => `${fmt.format(n).replace(/\s/g, ' ')} FCFA`;
 const parseNum = (v) => {
   const n = Number(String(v).replace(/\s| | /g, '').replace(',', '.'));
   return Number.isFinite(n) ? n : 0;

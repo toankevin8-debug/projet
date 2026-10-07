@@ -1,37 +1,7 @@
 import { html } from '../html.js';
 import { publicPage, wordmark } from './layout.js';
-import { invoiceSheet } from './sheet.js';
+import { icon } from './icons.js';
 
-const demo = {
-  demo: true,
-  kind: 'facture',
-  number: 'FA-2026-0014',
-  issue_date: '2026-10-02',
-  due_date: '2026-10-17',
-  terms_days: 15,
-  seller: {
-    business_name: 'Atelier Nanan',
-    legal_form: 'Entreprise individuelle',
-    address: 'Rue des Jardins, Cocody',
-    city: 'Abidjan',
-    ncc: '2204517 K',
-    tax_regime: 'RSI',
-    tax_center: 'Cocody',
-    payment_info: 'Wave ou Orange Money : 07 07 00 00 00',
-  },
-  buyer: { name: 'Boulangerie des Deux-Plateaux SARL', address: 'Bd Latrille, Abidjan', ncc: '1907733 B' },
-  items: [
-    { description: 'Affiches A2, campagne de rentrée', qty: 3, unit_price: 25000, vat_applicable: true },
-    { description: 'Création du logo et charte simple', qty: 1, unit_price: 80000, vat_applicable: true },
-  ],
-  vat_applicable: true,
-  vat_rate: 18,
-  total_ht: 155000,
-  total_vat: 27900,
-  total_ttc: 182900,
-  words: 'Arrêtée la présente facture à la somme de cent quatre-vingt-deux mille neuf cents francs CFA.',
-  certification: { fiscal_number: 'FNE-26-0047719', certified_at: '2026-10-02' },
-};
 
 const TIMELINE = [
   ['9 mai 2025', 'Arrêté n°0337 : modalités de la facture normalisée électronique.'],
@@ -199,6 +169,75 @@ function whatsapp() {
   </div>`;
 }
 
+// Point d'or du logo et halos discrets, en filigrane dans le bandeau d'accueil.
+const SHAPES = html`<svg class="shapes" viewBox="0 0 1200 640" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">
+  <circle cx="1130" cy="430" r="60" fill="#d4941f" opacity=".16"/>
+  <circle cx="60" cy="600" r="140" fill="#ffffff" opacity=".03"/>
+</svg>`;
+
+function heroMock() {
+  return html`<div class="mock" aria-label="Aperçu de l’application FreeFact" role="img">
+    <div class="mock-app">
+      <div class="mock-top"><b>Tableau de bord</b><span class="tag tag--a_certifier">1 à certifier</span></div>
+      <div class="mock-kpis">
+        <div><span>Facturé ce mois</span><b>697 380</b></div>
+        <div><span>Encaissé</span><b>265 500</b></div>
+        <div class="bad"><span>En retard</span><b>73 750</b></div>
+      </div>
+      <div class="mock-row"><span class="mono">FA-2026-0014</span><span>Boulangerie des Deux-Plateaux</span><span class="tag tag--payee">Payée</span><span class="amt">182 900</span></div>
+      <div class="mock-row"><span class="mono">FA-2026-0013</span><span>Akwaba Events</span><span class="tag tag--partiellement_payee">Acompte</span><span class="amt">531 000</span></div>
+      <div class="mock-row"><span class="mono">FA-2026-0012</span><span>Adjoua Konan</span><span class="tag tag--a_certifier">À certifier</span><span class="amt">113 280</span></div>
+    </div>
+    <div class="mock-float mock-cert"><span class="seal">${icon('shield', { size: 22 })}</span><div><b>Certifiée FNE</b><span>FA-2026-0014 · N° FNE-26-0047719</span></div></div>
+    <div class="mock-float mock-wa">Bien reçu, je fais le Wave ce soir.<time>10:51 ✓✓</time></div>
+  </div>`;
+}
+
+const TILES = html`<div class="bento">
+  <div class="tile tile--wide tile--dark" data-reveal>
+    <span class="ic">${icon('mic')}</span>
+    <h3>Facture express : dites-le, FreeFact l’écrit</h3>
+    <p>Une phrase tapée ou dictée devient des lignes chiffrées. Un prix que vous n’avez pas donné reste à zéro : rien n’est deviné, et c’est vous qui émettez.</p>
+    <div class="tile-visual" style="display:grid;gap:10px">
+      <div class="said">${icon('mic', { size: 18 })}<span>« 3 affiches à 25 000 et un logo à 80 000 pour la boulangerie, paiement sous 15 jours »</span></div>
+      <div class="made"><div><span>Affiches</span><b class="num">3 × 25 000</b></div><div><span>Logo</span><b class="num">1 × 80 000</b></div><div><span>Échéance</span><b>15 jours</b></div></div>
+    </div>
+  </div>
+  <div class="tile tile--third" data-reveal>
+    <span class="ic">${icon('hash')}</span>
+    <h3>Numérotation sans trou</h3>
+    <p>Une série par année, attribuée à l’émission. Impossible de sauter un numéro.</p>
+    <div class="tile-visual numbers"><span>FA-2026-0001 <b>émise</b></span><span>FA-2026-0002 <b>émise</b></span><span>FA-2026-0003 <b>émise</b></span></div>
+  </div>
+  <div class="tile tile--half" data-reveal>
+    <span class="ic">${icon('shield')}</span>
+    <h3>Certification FNE, étape par étape</h3>
+    <p>Vous déclarez la facture sur la plateforme de la DGI, vous reportez le numéro fiscal : l’envoi se débloque. Jamais avant.</p>
+    <div class="tile-visual mini-track"><span class="on">Émise</span><span class="cur">Certifiée</span><span>Envoyée</span><span>Encaissée</span></div>
+  </div>
+  <div class="tile tile--half" data-reveal>
+    <span class="ic">${icon('wallet')}</span>
+    <h3>Mobile Money, acomptes et soldes</h3>
+    <p>Notez chaque paiement, même partiel : le reste à payer et le statut se mettent à jour tout seuls.</p>
+    <div class="tile-visual chips"><span class="chip">Wave</span><span class="chip">Orange Money</span><span class="chip">MTN Money</span><span class="chip">Moov Money</span><span class="chip">Espèces</span><span class="chip">Virement</span></div>
+  </div>
+  <div class="tile tile--third" data-reveal>
+    <span class="ic">${icon('bell')}</span>
+    <h3>Relances au bon ton</h3>
+    <p>Amical à quelques jours, ferme après un mois. Sans menace, relues par vous.</p>
+  </div>
+  <div class="tile tile--third" data-reveal>
+    <span class="ic">${icon('chart')}</span>
+    <h3>Prévisions à 7 et 30 jours</h3>
+    <p>Calculées d’après les habitudes réelles de paiement de chaque client.</p>
+  </div>
+  <div class="tile tile--third" data-reveal>
+    <span class="ic">${icon('undo')}</span>
+    <h3>Corrections par avoir</h3>
+    <p>Une facture émise ne se retouche pas : l’avoir est préparé en un clic, plafonné au bon montant.</p>
+  </div>
+</div>`;
+
 export function landingPage({ user, email = '' }) {
   return publicPage({
     title: 'FreeFact — des factures conformes FNE, envoyées sur WhatsApp',
@@ -209,23 +248,23 @@ export function landingPage({ user, email = '' }) {
 <a class="skip-link" href="#contenu">Aller au contenu</a>
 <main id="contenu">
   <section class="hero" data-hero>
-    <div class="wrap">
-      <div>
-        <p class="eyebrow">Facturation · Côte d’Ivoire · Facture normalisée électronique</p>
-        <h1>La facture qui passe la DGI <em>du premier coup.</em></h1>
-        <p class="lede">FreeFact prépare des factures conformes à la FNE : NCC, TVA selon votre régime, numérotation sans trou, montant en lettres. Vous émettez, vous certifiez, vous envoyez sur WhatsApp, et vous suivez ce que Wave et Orange Money vous ont réellement versé.</p>
-        ${user
-          ? html`<div class="ctas"><a class="btn btn--accent btn--large" href="/app">Ouvrir mon espace</a></div>`
-          : html`<form class="hero-form" method="get" action="/inscription">
-              <label class="visually-hidden" for="hero-email">Votre email</label>
-              <input id="hero-email" name="email" type="email" autocomplete="email" placeholder="votre@email.ci" value="${email}">
-              <button class="btn btn--accent btn--large" type="submit">Créer mon compte</button>
-            </form>
-            <p class="fine">Gratuit jusqu’à 5 factures par mois · sans carte bancaire · <a href="#essai">essayer d’abord sans compte</a></p>`}
-      </div>
-      <div>
-        ${invoiceSheet(demo, { className: 'hero-sheet' })}
-        <p class="hero-caption"><span>FA-2026-0014</span><span>Une facture FreeFact, telle que votre client la reçoit.</span></p>
+    <div class="hero-panel">
+      ${SHAPES}
+      <div class="hero-grid">
+        <div>
+          <p class="pill"><b>${icon('check', { size: 14 })}</b>Pensé pour la facture normalisée électronique (FNE)</p>
+          <h1>La facture qui passe la DGI <em>du premier coup.</em></h1>
+          <p class="lede">FreeFact prépare des factures conformes : NCC, TVA selon votre régime, numérotation sans trou, montant en lettres. Vous certifiez, vous envoyez sur WhatsApp, et vous suivez ce que Wave et Orange Money vous ont réellement versé.</p>
+          ${user
+            ? html`<div class="ctas"><a class="btn btn--accent btn--large" href="/app">Ouvrir mon espace ${icon('arrow', { size: 18 })}</a></div>`
+            : html`<form class="hero-form" method="get" action="/inscription">
+                <label class="visually-hidden" for="hero-email">Votre email</label>
+                <input id="hero-email" name="email" type="email" autocomplete="email" placeholder="votre@email.ci" value="${email}">
+                <button class="btn btn--accent btn--large" type="submit">Créer mon compte ${icon('arrow', { size: 18 })}</button>
+              </form>
+              <p class="fine"><span>${icon('check', { size: 16 })}5 factures par mois gratuites</span><span>${icon('check', { size: 16 })}Sans carte bancaire</span><span>${icon('check', { size: 16 })}<a href="#essai">Essayer sans compte</a></span></p>`}
+        </div>
+        ${heroMock()}
       </div>
     </div>
   </section>
@@ -235,6 +274,16 @@ export function landingPage({ user, email = '' }) {
       <dl class="proof-grid">
         ${PROOF.map(([n, t]) => html`<div data-reveal><dt>${n}</dt><dd>${t}</dd></div>`)}
       </dl>
+    </div>
+  </section>
+
+  <section class="band" id="fonctions" aria-labelledby="fonctions-title">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <div><p class="eyebrow">Ce que fait FreeFact</p><h2 id="fonctions-title">Tout le cycle de la facture, dans votre poche.</h2></div>
+        <p>Du devis au paiement Wave, chaque étape débloque la suivante. On n’envoie pas ce qui n’est pas certifié ; on n’encaisse pas au-delà de ce qui est dû.</p>
+      </div>
+      ${TILES}
     </div>
   </section>
 
@@ -248,7 +297,7 @@ export function landingPage({ user, email = '' }) {
         ${TIMELINE.map(([when, what], i) => html`<li class="${i === TIMELINE.length - 1 ? 'now' : ''}"><time>${when}</time><p>${what}</p></li>`)}
       </ol>
       <div class="risks">
-        ${RISKS.map(([t, d], i) => html`<div data-reveal><span class="n">${String(i + 1).padStart(2, '0')}</span><h3>${t}</h3><p>${d}</p></div>`)}
+        ${RISKS.map(([t, d]) => html`<div data-reveal><span class="n">${icon('alert')}</span><h3>${t}</h3><p>${d}</p></div>`)}
       </div>
     </div>
   </section>
@@ -258,8 +307,8 @@ export function landingPage({ user, email = '' }) {
   <section class="band band--tint" id="cycle" aria-labelledby="cycle-title">
     <div class="wrap">
       <div class="section-head" data-reveal>
-        <div><p class="eyebrow">Le parcours d’une facture</p><h2 id="cycle-title">Cinq étapes, dans le bon ordre, sans en sauter une.</h2></div>
-        <p>Chaque étape débloque la suivante : on n’envoie pas ce qui n’est pas certifié, on n’encaisse pas au-delà de ce qui est dû.</p>
+        <div><p class="eyebrow">Le parcours d’une facture</p><h2 id="cycle-title">Cinq étapes, dans le bon ordre.</h2></div>
+        <p>FreeFact pilote le cycle complet et vous dit à chaque instant ce qui reste à faire.</p>
       </div>
       <ol class="steps">
         ${STEPS.map(([title, text, who]) => html`<li data-reveal><h3>${title}</h3><p>${text}</p><span class="who">${who}</span></li>`)}
@@ -270,13 +319,13 @@ export function landingPage({ user, email = '' }) {
   <section class="band" aria-labelledby="envoi-title">
     <div class="wrap lp-split">
       <div data-reveal>
-        <p class="eyebrow">Envoi et encaissement</p>
+        <p class="eyebrow" style="color:var(--accent);margin-bottom:12px">Envoi et encaissement</p>
         <h2 id="envoi-title">Votre client reçoit un lien, pas une pièce jointe floue.</h2>
-        <p class="lp-lede">Un message WhatsApp prérempli part avec le lien de la facture certifiée. Votre client l’ouvre sur son téléphone, l’imprime s’il le veut. Vous notez le paiement Wave, Orange Money, MTN ou Moov ; FreeFact recalcule le reste à payer.</p>
-        <ul class="rules" style="columns:1">
-          <li><span class="n">→</span><div><b>Relances au bon ton</b><span>Amical à quelques jours, ferme après un mois. Sans menace, sans pénalité inventée, relues par vous.</span></div></li>
-          <li><span class="n">→</span><div><b>Paiements partiels</b><span>Un acompte, puis le solde : la facture passe de « partiellement payée » à « payée » toute seule.</span></div></li>
-          <li><span class="n">→</span><div><b>Prévisions à 7 et 30 jours</b><span>Calculées d’après les habitudes de paiement réelles de chaque client.</span></div></li>
+        <p class="lp-lede">Un message WhatsApp prérempli part avec le lien de la facture certifiée. Votre client l’ouvre sur son téléphone, la télécharge en PDF s’il le veut. Vous notez le paiement ; FreeFact recalcule le reste à payer.</p>
+        <ul class="rules" style="grid-template-columns:1fr">
+          <li><span class="n">${icon('send', { size: 15 })}</span><div><b>WhatsApp ou email</b><span>Message prérempli, ou email avec le PDF joint.</span></div></li>
+          <li><span class="n">${icon('file', { size: 15 })}</span><div><b>PDF prêt à imprimer</b><span>Avec le cachet de certification et le numéro fiscal.</span></div></li>
+          <li><span class="n">${icon('clock', { size: 15 })}</span><div><b>Suivi des retards</b><span>Un récapitulatif chaque matin de ce qui est en retard ou à certifier.</span></div></li>
         </ul>
       </div>
       <div data-reveal>${whatsapp()}</div>
@@ -286,37 +335,16 @@ export function landingPage({ user, email = '' }) {
   <section class="band band--tint" aria-labelledby="regles">
     <div class="wrap">
       <div class="section-head" data-reveal>
-        <div><p class="eyebrow">Les contrôles</p><h2 id="regles">Onze règles appliquées à chaque facture.</h2></div>
+        <div><p class="eyebrow">Les contrôles</p><h2 id="regles">Onze règles vérifiées à chaque facture.</h2></div>
         <p>Elles sont inscrites dans la base de données elle-même : même en cas de bug de l’interface, une facture émise ne peut pas être modifiée et un numéro ne peut pas sauter.</p>
       </div>
       <ol class="rules">
-        ${RULES.map(([title, text], i) => html`<li><span class="n">${String(i + 1).padStart(2, '0')}</span><div><b>${title}</b><span>${text}</span></div></li>`)}
+        ${RULES.map(([title, text]) => html`<li><span class="n">${icon('check', { size: 15 })}</span><div><b>${title}</b><span>${text}</span></div></li>`)}
       </ol>
     </div>
   </section>
 
-  <section class="band" aria-labelledby="ia">
-    <div class="wrap">
-      <div class="section-head" data-reveal>
-        <div><p class="eyebrow">Facture express</p><h2 id="ia">Dites ce que vous avez vendu. FreeFact écrit le brouillon.</h2></div>
-        <p>Une phrase tapée ou dictée devient des lignes chiffrées. Un montant que vous n’avez pas donné reste à zéro : rien n’est deviné. Vous relisez, et c’est vous qui émettez.</p>
-      </div>
-      <div class="ai-example" data-reveal>
-        <div class="said">« 3 affiches à 25 000 et un logo à 80 000 pour la boulangerie, paiement sous 15 jours »</div>
-        <div class="made">
-          <p class="eyebrow">Brouillon préparé</p>
-          <table>
-            <tr><td>Affiches</td><td class="r num">3 × 25 000</td></tr>
-            <tr><td>Logo</td><td class="r num">1 × 80 000</td></tr>
-            <tr><td>Client</td><td class="r">Boulangerie des Deux-Plateaux</td></tr>
-            <tr><td>Échéance</td><td class="r">15 jours après émission</td></tr>
-          </table>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="band band--tint" id="tarifs" aria-labelledby="tarifs-title">
+  <section class="band" id="tarifs" aria-labelledby="tarifs-title">
     <div class="wrap">
       <div class="section-head" data-reveal>
         <div><p class="eyebrow">Tarifs</p><h2 id="tarifs-title">Le prix d’un déjeuner par mois.</h2></div>
@@ -327,7 +355,7 @@ export function landingPage({ user, email = '' }) {
           <p class="eyebrow">Gratuit</p>
           <div class="price">0 <small>FCFA / mois</small></div>
           <p class="muted small">Pour démarrer et facturer ses premiers clients.</p>
-          <ul><li>5 factures par mois</li><li>20 clients</li><li>Facture conforme, aperçu, impression</li><li>Certification FNE guidée</li><li>5 actions IA par mois</li><li class="no">Logo personnalisé</li></ul>
+          <ul><li>5 factures par mois</li><li>20 clients</li><li>Facture conforme, PDF, WhatsApp</li><li>Certification FNE guidée</li><li>5 actions IA par mois</li><li class="no">Logo personnalisé</li></ul>
           <a class="btn btn--ghost" href="/inscription">Commencer gratuitement</a>
         </div>
         <div class="plan plan--focus">
@@ -355,7 +383,7 @@ export function landingPage({ user, email = '' }) {
     <div class="wrap signup">
       <div data-reveal>
         <p class="eyebrow">Inscription</p>
-        <h2 id="inscription-title">Votre première facture conforme, ce soir.</h2>
+        <h2 id="inscription-title" style="margin-top:12px">Votre première facture conforme, ce soir.</h2>
         <p class="muted" style="margin-top:18px;font-size:17px">Le compte se crée en une minute. Ensuite, FreeFact vous demande votre identité légale ; gardez ces informations sous la main :</p>
         <ul class="prepare">
           <li><b>NCC</b><span>Votre numéro de compte contribuable, sur votre déclaration d’existence.</span></li>
@@ -370,8 +398,8 @@ export function landingPage({ user, email = '' }) {
 
   <section class="band" id="questions" aria-labelledby="faq-title">
     <div class="wrap lp-split lp-split--faq">
-      <div><p class="eyebrow">Questions</p><h2 id="faq-title">Ce qu’on nous demande avant de s’inscrire.</h2>
-        <p class="muted" style="margin-top:16px">Une autre question ? Écrivez-nous après inscription depuis votre espace, on répond sous 24 heures ouvrées.</p></div>
+      <div><p class="eyebrow" style="color:var(--accent);margin-bottom:12px">Questions</p><h2 id="faq-title">Ce qu’on nous demande avant de s’inscrire.</h2>
+        <p class="muted" style="margin-top:16px">Une autre question ? Écrivez-nous depuis votre espace, on répond sous 24 heures ouvrées.</p></div>
       <div class="faq">${FAQ.map(([q, a]) => html`<details><summary>${q}</summary><p>${a}</p></details>`)}</div>
     </div>
   </section>
@@ -379,7 +407,7 @@ export function landingPage({ user, email = '' }) {
 
 ${user ? '' : html`<div class="sticky-cta" data-sticky-cta hidden>
   <span>Gratuit · sans carte bancaire</span>
-  <a class="btn btn--accent" href="/inscription">Créer mon compte</a>
+  <a class="btn btn--accent btn--small" href="/inscription">Créer mon compte</a>
 </div>`}
 
 <footer class="site-foot">
@@ -388,7 +416,7 @@ ${user ? '' : html`<div class="sticky-cta" data-sticky-cta hidden>
       ${wordmark()}
       <p style="margin-top:14px">Facturation pour freelances et petites entreprises de Côte d’Ivoire. FreeFact est un outil de gestion : il ne remplace ni la DGI ni votre expert-comptable. Le portail <a href="https://fne.dgi.gouv.ci" rel="noopener">fne.dgi.gouv.ci</a> fait foi.</p>
     </div>
-    <div><h4>Produit</h4><ul><li><a href="/#essai">Essayer sans compte</a></li><li><a href="/#cycle">Parcours d’une facture</a></li><li><a href="/#tarifs">Tarifs</a></li><li><a href="/#questions">Questions</a></li></ul></div>
+    <div><h4>Produit</h4><ul><li><a href="/#essai">Essayer sans compte</a></li><li><a href="/#fonctions">Fonctionnalités</a></li><li><a href="/#tarifs">Tarifs</a></li><li><a href="/#questions">Questions</a></li></ul></div>
     <div><h4>Compte</h4><ul><li><a href="/inscription">Créer un compte</a></li><li><a href="/connexion">Se connecter</a></li></ul>
       <h4 style="margin-top:18px">Légal</h4><ul><li><a href="/cgu">Conditions d’utilisation</a></li><li><a href="/confidentialite">Confidentialité</a></li><li><a href="/mentions-legales">Mentions légales</a></li></ul></div>
   </div>

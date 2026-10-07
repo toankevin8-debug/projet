@@ -189,7 +189,7 @@ test('devis partagé, fiche client et changement de mot de passe', { skip }, asy
   assert.equal(pub.status, 200);
   const html = await pub.text();
   assert.match(html, /Devis/);
-  assert.match(html, /531 000/, 'TTC calculé avec la TVA à 18 %');
+  assert.match(html, /531[\u00a0\u202f ]000/, 'TTC calculé avec la TVA à 18 %');
 
   const detail = await req('GET', `/app/clients/${clientId}`);
   assert.match(detail.body, /Retard moyen/);
