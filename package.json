@@ -1,0 +1,23 @@
+{
+  "name": "freefact",
+  "version": "0.2.0",
+  "private": true,
+  "description": "FreeFact — facturation conforme FNE pour freelances et petites entreprises ivoiriennes",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "db:migrate": "node server/migrate.js",
+    "test": "node --test test/*.test.js",
+    "test:db": "db/tests/run.sh"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
+    "express": "^5.2.1",
+    "pg": "^8.23.1",
+    "zod": "^4.6.5"
+  }
+}

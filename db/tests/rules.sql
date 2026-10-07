@@ -92,7 +92,7 @@ SELECT pg_temp.eq((SELECT total_ttc FROM invoices WHERE id = '00000000-0000-0000
 SELECT pg_temp.eq((SELECT due_date FROM invoices WHERE id = '00000000-0000-0000-0000-0000000000f1'),
                   current_date + 15, 'échéance');
 SELECT pg_temp.eq((SELECT amount_in_words FROM invoice_overview WHERE id = '00000000-0000-0000-0000-0000000000f1'),
-                  'Arrêtée la présente facture à la somme de cent quatre-vingt-deux mille neuf cents francs CFA (182900 FCFA).',
+                  'Arrêtée la présente facture à la somme de cent quatre-vingt-deux mille neuf cents francs CFA (182 900 FCFA).',
                   'mention en lettres');
 
 -- Règle 4 : modifier le profil ne change pas la facture émise.

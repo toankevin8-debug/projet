@@ -379,7 +379,7 @@ CREATE FUNCTION invoice_legal_sentence(total_ttc bigint, kind invoice_kind DEFAU
 RETURNS text LANGUAGE sql IMMUTABLE AS $$
     SELECT 'Arrêtée la présente ' || CASE WHEN kind = 'avoir' THEN 'facture d''avoir' ELSE 'facture' END
            || ' à la somme de ' || freefact.amount_in_words(total_ttc) || ' francs CFA ('
-           || total_ttc || ' FCFA).'
+           || regexp_replace(total_ttc::text, '(\d)(?=(\d{3})+$)', '\1 ', 'g') || ' FCFA).'
 $$;
 
 -- Attribue le numéro suivant d'une série (préfixe, année) de façon atomique.
